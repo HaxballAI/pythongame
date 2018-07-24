@@ -1,10 +1,14 @@
-windowsize = 600
+windowwidth = 840
+windowheight = 400
+pitchwidth = 640
+pitchheight = 260
+goalsize = 110
 
 import pygame
 
 pygame.init()
 import numpy as np
-win = pygame.display.set_mode((windowsize, windowsize))
+win = pygame.display.set_mode((windowwidth, windowheight))
 pygame.display.set_caption("ball")
 
 clock = pygame.time.Clock()
@@ -25,13 +29,10 @@ balldamping = 0.99
 ballinvmass = 1
 ballbouncing = 0.5
 
-pitchwidth = 400
-pitchheight = 300
-goalsize = 90
-redstart = (170, 300)
-pinkstart = (430, 300)
-ballstart = (300, 300)
-goalpostradius = 8
+redstart = (200, 200)
+pinkstart = (640, 200)
+ballstart = (420, 200)
+goalpostradius = 10
 goalpostbouncingquotient = 0.5
 goallinethickness = 5
 kickingcircleradius = 30
@@ -55,34 +56,34 @@ textcolour = (0, 0, 0)
 textposition = (215, 25)
 
 
-x1 = int(np.floor((windowsize - pitchwidth)/2))
-x2 = int(np.floor((windowsize - pitchheight)/2))
+pitchcornerx = int(np.floor((windowwidth - pitchwidth)/2))
+pitchcornery = int(np.floor((windowheight - pitchheight)/2))
 
-w1 = x1 - 4*playerradius
-w2 = x2 - 2*playerradius
+w1 = pitchcornerx - 4*playerradius
+w2 = pitchcornery - 2*playerradius
 w3 = pitchwidth + 8*playerradius
 w4 = pitchheight + 4*playerradius
 
-y2 = int(np.floor((windowsize - goalsize)/2))
+goalcornery = int(np.floor((windowheight - goalsize)/2))
 y3 = 2*ballradius + 5
-y1 = x1 - y3
+y1 = pitchcornerx - y3
 
-z1 = x1 + pitchwidth
-z2 = y2
+z1 = pitchcornerx + pitchwidth
+z2 = goalcornery
 z3 = y3
 
 a1 = y1 + 2*ballradius
-a2 = y2
+a2 = goalcornery
 
 b1 = z1
-b2 = y2
+b2 = goalcornery
 
-movespacex = [w1 + playerradius, w1 + w3 - playerradius]
-movespacey = [w2 + playerradius, w2 + w4 - playerradius]
+movespacex = [playerradius, windowwidth - playerradius]
+movespacey = [playerradius, windowheight - playerradius]
 
-ballspacex = [x1 + ballradius, x1 + pitchwidth - ballradius]
-ballspacey = [x2 + ballradius, x2 + pitchheight - ballradius]
-goaly = [y2, y2 + goalsize]
+ballspacex = [pitchcornerx + ballradius, pitchcornerx + pitchwidth - ballradius]
+ballspacey = [pitchcornery + ballradius, pitchcornery + pitchheight - ballradius]
+goaly = [goalcornery, goalcornery + goalsize]
 
 class player(object):
     def __init__(self, x, y, colour):
@@ -135,16 +136,16 @@ class goalpost(object):
 
 def redrawgamewindow():
     win.fill((0, 0, 0))
-    pygame.draw.rect(win, bordercolour, (w1, w2, w3, w4))
-    pygame.draw.rect(win, pitchcolour, (x1, x2, pitchwidth, pitchheight))
-    pygame.draw.rect(win, pitchcolour, (y1, y2, y3, goalsize))
-    pygame.draw.rect(win, pitchcolour, (z1, z2, z3, goalsize))
+    pygame.draw.rect(win, bordercolour, (0, 0, windowwidth, windowheight))
+    pygame.draw.rect(win, pitchcolour, (pitchcornerx, pitchcornery, pitchwidth, pitchheight))
+    pygame.draw.rect(win, pitchcolour, (pitchcornerx - 30, goalcornery, 30, goalsize))
+    pygame.draw.rect(win, pitchcolour, (z1, z2, 30, goalsize))
     pygame.draw.rect(win, goallinecolour, (a1, a2, goallinethickness, goalsize))
     pygame.draw.rect(win, goallinecolour, (b1, b2, goallinethickness, goalsize))
 
     pygame.draw.ellipse(win, centrecirclecolour, (ballstart[0] - centrecircleradius, ballstart[1] - centrecircleradius, 2*centrecircleradius, 2*centrecircleradius), centrecirclethickness)
-    pygame.draw.rect(win, centrecirclecolour, (x1 + pitchwidth // 2 - centrelinethickness // 2, x2, centrelinethickness, pitchheight // 2 - centrecircleradius))
-    pygame.draw.rect(win, centrecirclecolour, (x1 + pitchwidth // 2 - centrelinethickness // 2, x2 + pitchheight // 2 + centrecircleradius, centrelinethickness, pitchheight // 2 - centrecircleradius))
+    pygame.draw.rect(win, centrecirclecolour, (pitchcornerx + pitchwidth // 2 - centrelinethickness // 2, pitchcornery, centrelinethickness, pitchheight // 2 - centrecircleradius))
+    pygame.draw.rect(win, centrecirclecolour, (pitchcornerx + pitchwidth // 2 - centrelinethickness // 2, pitchcornery + pitchheight // 2 + centrecircleradius, centrelinethickness, pitchheight // 2 - centrecircleradius))
 
     red.draw(win)
     pink.draw(win)
@@ -245,21 +246,46 @@ while run:
     clock.tick(60)
 
     #should keep things on board
-    if red.xint <= movespacex[0] or red.xint >= movespacex[1]:
+    if red.x <= movespacex[0] or red.x >= movespacex[1]:
         red.velocity[0] = 0
-    if red.yint <= movespacey[0] or red.yint >= movespacey[1]:
+        if red.x <= movespacex[0]:
+            red.x = movespacex[0]
+        if red.x >= movespacex[1]:
+            red.x = movespacex[1]
+    if red.y <= movespacey[0] or red.y >= movespacey[1]:
         red.velocity[1] = 0
-    if pink.xint <= movespacex[0] or pink.xint >= movespacex[1]:
+        if red.y <= movespacey[0]:
+            red.y = movespacey[0]
+        if red.y >= movespacey[1]:
+            red.y = movespacey[1]
+    if pink.x <= movespacex[0] or pink.x >= movespacex[1]:
         pink.velocity[0] = 0
-    if pink.yint <= movespacey[0] or pink.yint >= movespacey[1]:
+        if pink.x <= movespacex[0]:
+            pink.x = movespacex[0]
+        if pink.x >= movespacex[1]:
+            pink.x = movespacex[1]
+    if pink.y <= movespacey[0] or pink.y >= movespacey[1]:
         pink.velocity[1] = 0
+        if pink.y <= movespacey[0]:
+            pink.y = movespacey[0]
+        if pink.y >= movespacey[1]:
+            pink.y = movespacey[1]
     if b.x <= ballspacex[0] or b.x >= ballspacex[1]:
         if b.y >= goaly[0] and b.y <= goaly[1]:
             pass
         else:
             b.velocity[0] = - b.velocity[0]
+            if b.x <= ballspacex[0]:
+                b.x = ballspacex[0]
+
+            if b.x >= ballspacex[1]:
+                b.x = ballspacex[1]
     if b.y <= ballspacey[0] or b.y >= ballspacey[1]:
         b.velocity[1] = - b.velocity[1]
+        if b.y <= ballspacey[0]:
+            b.y = ballspacey[0]
+        if b.y >= ballspacey[1]:
+            b.y = ballspacey[1]
 
     keys = pygame.key.get_pressed()
 
@@ -381,13 +407,12 @@ while run:
                 collisiongoalpost(goalpost, thing)
                 goalpost.x = int(goalpost.x)
                 goalpost.y = int(goalpost.y)
-                
-    #checks for players bouncing off each other
-    differencevector = np.array([pink.x - red.x, pink.y - red.y])
-    distance = np.linalg.norm(differencevector)
-    if distance <= 2*playerradius:
-        collision(red, pink)
 
++    #checks for players bouncing off each other
++    differencevector = np.array([pink.x - red.x, pink.y - red.y])
++    distance = np.linalg.norm(differencevector)
++    if distance <= 2*playerradius:
++        collision(red, pink)
 
     G = goal(red, pink, b, redscore, pinkscore)
     redscore = G[0]
