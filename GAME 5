@@ -412,7 +412,7 @@ while run:
     differencevector = np.array([pink.x - red.x, pink.y - red.y])
     distance = np.linalg.norm(differencevector)
     if distance <= 2*playerradius:
-    collision(red, pink)
+        collision(red, pink)
 
     G = goal(red, pink, b, redscore, pinkscore)
     redscore = G[0]
