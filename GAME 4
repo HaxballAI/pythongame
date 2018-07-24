@@ -1,0 +1,310 @@
+import pygame
+pygame.init()
+import numpy as np
+pygame.font.init()
+
+windowsize = 500
+
+win = pygame.display.set_mode((windowsize, windowsize))
+pygame.display.set_caption("ball")
+
+clock = pygame.time.Clock()
+font = pygame.font.Font(None, 50)
+
+
+playerradius = 15
+playerbouncing = 0.5
+playerinvmass = 0.5
+playerdamping = 0.96
+accel = 0.1
+kickaccel = 0.07
+kickstrength = 5
+
+ballradius = 10
+balldamping = 0.99
+ballinvmass = 1
+ballbouncing = 0.5
+
+pitchwidth = 400
+pitchheight = 300
+goalsize = 90
+redstart = (120, 250)
+pinkstart = (380, 250)
+ballstart = (250, 250)
+goalpostradius = 8
+goallinethickness = 5
+kickingcircleradius = 30
+kickingcirclethickness = 3
+
+redcolour = (255, 0, 0)
+pinkcolour = (255, 0, 255)
+ballcolour = (0, 0, 0)
+goallinecolour = (255, 255, 255)
+goalpostcolour = (150, 150, 150)
+pitchcolour = (0, 0, 255)
+bordercolour = (0, 150, 255)
+kickingcirclecolour = (255, 255, 255)
+
+
+
+x1 = int(np.floor((windowsize - pitchwidth)/2))
+x2 = int(np.floor((windowsize - pitchheight)/2))
+
+w1 = x1 - 2*playerradius
+w2 = x2 - 2*playerradius
+w3 = pitchwidth + 4*playerradius
+w4 = pitchheight + 4*playerradius
+
+y2 = int(np.floor((windowsize - goalsize)/2))
+y3 = 2*ballradius + 5
+y1 = x1 - y3
+
+z1 = x1 + pitchwidth
+z2 = y2
+z3 = y3
+
+a1 = y1 + 2*ballradius
+a2 = y2
+
+b1 = z1
+b2 = y2
+
+movespacex = [w1 + playerradius, w1 + w3 - playerradius]
+movespacey = [w2 + playerradius, w2 + w4 - playerradius]
+
+ballspacex = [x1 + ballradius, x1 + pitchwidth - ballradius]
+ballspacey = [x2 + ballradius, x2 + pitchheight - ballradius]
+goaly = [y2, y2 + goalsize]
+
+class player(object):
+    def __init__(self, x, y, colour):
+        self.x = x
+        self.y = y
+        self.xint = x
+        self.yint = y
+        self.colour = colour
+        self.xacc = 0
+        self.yacc = 0
+        self.kicking = False
+        self.accelaration = accel
+        self.velocity = [0, 0]
+        self.speed = 0
+        self.kicking = False
+        self.kickdirection = [0, 0]
+        self.distancetoball = 100
+        self.bouncingquotient = playerbouncing
+        self.radius = playerradius
+        
+    def draw(self, win):
+        pygame.draw.circle(win, self.colour, (self.xint, self.yint), playerradius)
+        
+class ball(object):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.xint = x
+        self.yint = y
+        self.velocity = [0, 0]
+        self.xacc = 0
+        self.yacc = 0
+        self.bouncingquotient = ballbouncing
+        self.radius = ballradius
+        self.speed = 0
+    
+    def draw(self, win):
+        pygame.draw.circle(win, (255, 255, 255), (self.xint, self.yint), ballradius)
+        
+class goalpost(object):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    
+    def draw(self, win):
+        pygame.draw.circle(win, goalpostcolour, (self.x, self.y), goalpostradius)
+    
+def redrawgamewindow():
+    win.fill((0, 0, 0))
+    pygame.draw.rect(win, bordercolour, (w1, w2, w3, w4))
+    pygame.draw.rect(win, pitchcolour, (x1, x2, pitchwidth, pitchheight))
+    pygame.draw.rect(win, pitchcolour, (y1, y2, y3, goalsize))
+    pygame.draw.rect(win, pitchcolour, (z1, z2, z3, goalsize))
+    pygame.draw.rect(win, goallinecolour, (a1, a2, goallinethickness, goalsize))
+    pygame.draw.rect(win, goallinecolour, (b1, b2, goallinethickness, goalsize))
+    red.draw(win)
+    pink.draw(win)
+    b.draw(win)
+    redgoalpost1.draw(win)
+    redgoalpost2.draw(win)
+    pinkgoalpost1.draw(win)
+    pinkgoalpost2.draw(win)
+    if red.kicking == True:
+        pygame.draw.ellipse(win, kickingcirclecolour, (red.x - kickingcircleradius, red.y - kickingcircleradius, 2*kickingcircleradius, 2*kickingcircleradius), kickingcirclethickness)
+    string = str(redscore) + ":" + str(pinkscore)
+    text = font.render(string, True, (255, 255, 255))
+    win.blit(text, (215, 25))
+    pygame.display.update()
+    
+def collision(obj1, obj2):
+    bouncingq = obj1.bouncingquotient * obj2.bouncingquotient
+    collisionnormal = np.array([obj1.x - obj2.x, obj1.y - obj2.y]) / (np.linalg.norm([obj1.x - obj2.x, obj1.y - obj2.y]))
+    collisiontangent = np.array([obj1.y - obj2.y, - (obj1.x - obj2.x)]) / (np.linalg.norm([obj1.x - obj2.x, obj1.y - obj2.y]))
+    obj1component = np.dot(np.array(obj1.velocity), collisionnormal)
+    obj2component = np.dot(np.array(obj2.velocity), collisionnormal)
+    velocityafter = (obj1component + obj2component)*bouncingq*2
+    obj1tangentvelocity = np.dot(np.array(obj1.velocity), collisiontangent)
+    obj2tangentvelocity = np.dot(np.array(obj2.velocity), collisiontangent)
+    obj1.velocity = velocityafter * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
+    obj2.velocity = velocityafter * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
+    obj2.x = obj1.x - collisionnormal[0]*(obj1.radius + obj2.radius + 1)
+    obj2.y = obj1.y - collisionnormal[1]*(obj1.radius + obj2.radius + 1) 
+    
+def kick(obj1, ball):
+    kickdirection = np.array([ball.x - obj1.x, ball.y - obj1.y]) / (np.linalg.norm([ball.x - obj1.x, ball.y - obj1.y]))
+    ball.velocity = np.array(ball.velocity) + kickstrength * ballinvmass * kickdirection
+    
+def goal(red, pink, b, redscore, pinkscore):
+    if b.x <= a1:
+        pinkscore += 1
+        red.x = redstart[0]
+        red.y = redstart[1]
+        pink.x = pinkstart[0]
+        pink.y = pinkstart[1]
+        b.x = ballstart[0]
+        b.y = ballstart[1]
+        b.velocity = [0, 0]
+        red.velocity = [0, 0]
+        pink.velocity = [0, 0]
+    elif b.x >= b1 + 5:
+        redscore += 1
+        red.x = redstart[0]
+        red.y = redstart[1]
+        pink.x = pinkstart[0]
+        pink.y = pinkstart[1]
+        b.x = ballstart[0]
+        b.y = ballstart[1]
+        b.velocity = [0, 0]
+        red.velocity = [0, 0]
+        pink.velocity = [0, 0]
+    
+    return [redscore, pinkscore]
+    
+    
+red = player(redstart[0], redstart[1], redcolour)
+pink = player(pinkstart[0], pinkstart[1], pinkcolour)
+b = ball(ballstart[0], ballstart[1])
+
+redgoalpost1 = goalpost(a1, a2)
+redgoalpost2 = goalpost(a1, a2 + goalsize)
+pinkgoalpost1 = goalpost(b1, b2)
+pinkgoalpost2 = goalpost(b1, b2 + goalsize)
+
+redspeed = 0
+pinkspeed = 0
+pinkscore = 0
+redscore = 0
+
+run = True
+while run:
+    clock.tick(60)
+    
+    
+    if red.xint <= movespacex[0] or red.xint >= movespacex[1]:
+        red.velocity[0] = 0  
+    if red.yint <= movespacey[0] or red.yint >= movespacey[1]:
+        red.velocity[1] = 0
+    if pink.xint <= movespacex[0] or pink.xint >= movespacex[1]:
+        pink.velocity[0] = 0
+    if pink.yint <= movespacey[0] or pink.yint >= movespacey[1]:
+        pink.velocity[1] = 0
+    if b.x <= ballspacex[0] or b.x >= ballspacex[1]:
+        if b.y >= goaly[0] and b.y <= goaly[1]:
+            pass
+        else:
+            b.velocity[0] = - b.velocity[0]
+    if b.y <= ballspacey[0] or b.y >= ballspacey[1]:
+        b.velocity[1] = - b.velocity[1]
+    
+    keys = pygame.key.get_pressed()
+    
+    if keys[pygame.K_LEFT]:
+        if keys[pygame.K_UP]:
+            red.xacc = - 1/(2)**(1/2)
+            red.yacc = - 1/(2)**(1/2)
+        elif keys[pygame.K_DOWN]:
+            red.xacc = - 1/(2)**(1/2)
+            red.yacc = 1/(2)**(1/2)
+        else:
+            red.xacc = -1
+            red.yacc = 0
+    
+    elif keys[pygame.K_RIGHT]:
+        if keys[pygame.K_UP]:
+            red.xacc = 1/(2)**(1/2)
+            red.yacc = - 1/(2)**(1/2)
+        elif keys[pygame.K_DOWN]:
+            red.xacc = 1/(2)**(1/2)
+            red.yacc = 1/(2)**(1/2)
+        else:
+            red.xacc = 1
+            red.yacc = 0
+    
+    elif keys[pygame.K_UP]:
+        red.xacc = 0
+        red.yacc = -1
+        
+    elif keys[pygame.K_DOWN]:
+        red.xacc = 0
+        red.yacc = 1
+        
+    else:
+        red.xacc = 0
+        red.yacc = 0
+        
+    if keys[pygame.K_SPACE]:
+        red.kicking = True
+    else:
+        red.kicking = False
+    
+    if red.kicking == False:
+        red.velocity = np.array(red.velocity) + np.array([red.xacc, red.yacc])*red.accelaration
+    else:
+        red.velocity = np.array(red.velocity) + np.array([red.xacc, red.yacc])*kickaccel
+    
+    red.velocity = red.velocity * playerdamping
+    
+    red.x += red.velocity[0]
+    red.y += red.velocity[1]
+    
+    b.velocity = np.array(b.velocity) * balldamping
+    
+    b.x += b.velocity[0]
+    b.y += b.velocity[1]
+    
+    b.xint = int(b.x)
+    b.yint = int(b.y)
+    
+    red.xint = int(red.x)
+    red.yint = int(red.y)
+    
+    #finds distances to ball, kicking vectors, ect
+    red.kickdirection = np.array([b.x - red.x, b.y - red.y])/(np.linalg.norm([b.x - red.x, b.y - red.y]))
+    red.distancetoball = (np.linalg.norm(np.array([b.x - red.x, b.y - red.y])))
+    #pink.kickdirection = np.array([b.x - pink.x, b.y - pink.y])/(np.linalg.norm([b.x - pink.x, b.y - pink.y]))
+    #pink.distancetoball = (np.linalg.norm([b.x - pink.x, b.y - pink.y]))
+     
+    if red.distancetoball <= playerradius + ballradius:
+        if red.kicking == False:
+            collision(red, b)
+        else:
+            kick(red, b)
+    
+    
+    G = goal(red, pink, b, redscore, pinkscore)
+    redscore = G[0]
+    pinkscore = G[1]
+    redrawgamewindow()
+    
+    
+    for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
