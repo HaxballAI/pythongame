@@ -1,7 +1,7 @@
 import pygame
 pygame.init()
 import numpy as np
-#the following was written by stefan
+#the following was written by stefan with edits by philip
 win = pygame.display.set_mode((840, 400))
 pygame.display.set_caption("ball")
 
