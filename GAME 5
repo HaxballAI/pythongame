@@ -35,8 +35,8 @@ ballstart = (420, 200)
 goalpostradius = 8
 goalpostbouncingquotient = 0.5
 goallinethickness = 3
-kickingcircleradius = 30
-kickingcirclethickness = 3
+kickingcircleradius = 15
+kickingcirclethickness = 2
 
 redcolour = (255, 0, 0)
 pinkcolour = (255, 0, 255)
@@ -152,8 +152,14 @@ def redrawgamewindow():
 
     if red.kicking == True:
         pygame.draw.ellipse(win, kickingcirclecolour, (red.x - kickingcircleradius, red.y - kickingcircleradius, 2*kickingcircleradius, 2*kickingcircleradius), kickingcirclethickness)
+    else:
+        pygame.draw.ellipse(win, (0, 0, 0), (red.x - kickingcircleradius, red.y - kickingcircleradius, 2*kickingcircleradius, 2*kickingcircleradius), kickingcirclethickness)
     if pink.kicking == True:
         pygame.draw.ellipse(win, kickingcirclecolour, (pink.x - kickingcircleradius, pink.y - kickingcircleradius, 2*kickingcircleradius, 2*kickingcircleradius), kickingcirclethickness)
+    else:
+        pygame.draw.ellipse(win, (0, 0, 0), (pink.x - kickingcircleradius, pink.y - kickingcircleradius, 2*kickingcircleradius, 2*kickingcircleradius), kickingcirclethickness)
+
+    pygame.draw.ellipse(win, (0, 0, 0,), (b.x - ballradius, b.y - ballradius, 2 * ballradius, 2 * ballradius), 2)
 
     string = str(redscore) + ":" + str(pinkscore)
     text = font.render(string, True, (255, 255, 255))
@@ -385,7 +391,7 @@ while run:
 
         if red.kicking == False:
             if red.distancetoball <= playerradius + ballradius:
-                collision(red, b)
+                collision(b, red)
         else:
             kick(red, b)
 
@@ -393,7 +399,7 @@ while run:
 
         if pink.kicking == False:
             if pink.distancetoball <= playerradius + ballradius:
-                collision(pink, b)
+                collision(b, pink)
         else:
             kick(pink, b)
 
