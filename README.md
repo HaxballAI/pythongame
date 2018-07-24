@@ -5,3 +5,5 @@ GAME 5 has goalpost interactions, a centre line which does nothing, and better c
 STEFAN MADE GAME 5 24/07/2018 13:33
 
 GAME 5 line 285 - made it so that players will also bounce off each other. STEFAN 12/07/2018 14:47
+
+GAME 5 fixed bug where you could push ball out of play area, and leave play area yourself, changed dimensions to map and minor changes. PHILIP 7/12/2018 10:06 EST (dates are gonna be a mess)
