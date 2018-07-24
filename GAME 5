@@ -32,7 +32,7 @@ ballbouncing = 0.5
 redstart = (200, 200)
 pinkstart = (640, 200)
 ballstart = (420, 200)
-goalpostradius = 10
+goalpostradius = 8
 goalpostbouncingquotient = 0.5
 goallinethickness = 3
 kickingcircleradius = 30
@@ -269,14 +269,14 @@ while run:
         if b.y >= goaly[0] and b.y <= goaly[1]:
             pass
         else:
-            b.velocity[0] = - b.velocity[0]
+            b.velocity[0] = - 0.5 * b.velocity[0]
             if b.x <= ballspacex[0]:
                 b.x = ballspacex[0]
 
             if b.x >= ballspacex[1]:
                 b.x = ballspacex[1]
     if b.y <= ballspacey[0] or b.y >= ballspacey[1]:
-        b.velocity[1] = - b.velocity[1]
+        b.velocity[1] = - 0.5 * b.velocity[1]
         if b.y <= ballspacey[0]:
             b.y = ballspacey[0]
         if b.y >= ballspacey[1]:
@@ -381,15 +381,19 @@ while run:
     pink.kickdirection = np.array([b.x - pink.x, b.y - pink.y])/(np.linalg.norm([b.x - pink.x, b.y - pink.y]))
     pink.distancetoball = (np.linalg.norm([b.x - pink.x, b.y - pink.y]))
 
-    if red.distancetoball <= playerradius + ballradius:
+    if red.distancetoball <= playerradius + ballradius + 4:
+
         if red.kicking == False:
-            collision(red, b)
+            if red.distancetoball <= playerradius + ballradius:
+                collision(red, b)
         else:
             kick(red, b)
 
-    if pink.distancetoball <= playerradius + ballradius:
+    if pink.distancetoball <= playerradius + ballradius + 4:
+
         if pink.kicking == False:
-            collision(pink, b)
+            if pink.distancetoball <= playerradius + ballradius:
+                collision(pink, b)
         else:
             kick(pink, b)
 
@@ -399,6 +403,8 @@ while run:
             vector =  np.array([goalpost.x - thing.x, goalpost.y - thing.y])
             distance = np.linalg.norm(vector)
             if distance <= goalpostradius + thing.radius:
+                thing.x = goalpost.x - vector[0]/np.linalg.norm(vector)
+                thing.y = goalpost.y - vector[1]/np.linalg.norm(vector)
                 collisiongoalpost(goalpost, thing)
                 goalpost.x = int(goalpost.x)
                 goalpost.y = int(goalpost.y)
