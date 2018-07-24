@@ -408,11 +408,11 @@ while run:
                 goalpost.x = int(goalpost.x)
                 goalpost.y = int(goalpost.y)
 
-+    #checks for players bouncing off each other
-+    differencevector = np.array([pink.x - red.x, pink.y - red.y])
-+    distance = np.linalg.norm(differencevector)
-+    if distance <= 2*playerradius:
-+        collision(red, pink)
+    #checks for players bouncing off each other
+    differencevector = np.array([pink.x - red.x, pink.y - red.y])
+    distance = np.linalg.norm(differencevector)
+    if distance <= 2*playerradius:
+    collision(red, pink)
 
     G = goal(red, pink, b, redscore, pinkscore)
     redscore = G[0]
