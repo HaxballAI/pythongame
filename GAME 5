@@ -34,23 +34,23 @@ pinkstart = (640, 200)
 ballstart = (420, 200)
 goalpostradius = 10
 goalpostbouncingquotient = 0.5
-goallinethickness = 5
+goallinethickness = 3
 kickingcircleradius = 30
 kickingcirclethickness = 3
 
 redcolour = (255, 0, 0)
 pinkcolour = (255, 0, 255)
 ballcolour = (0, 0, 0)
-goallinecolour = (255, 255, 255)
+goallinecolour = (199, 230, 189)
 goalpostcolour = (150, 150, 150)
-pitchcolour = (0, 0, 255)
-bordercolour = (0, 150, 255)
+pitchcolour = (127, 162, 112)
+bordercolour = (113, 140, 90)
 kickingcirclecolour = (255, 255, 255)
 
-centrecircleradius = 40
-centrecirclecolour = (0, 0, 139)
-centrecirclethickness = 5
-centrelinethickness = 5
+centrecircleradius = 70
+centrecirclecolour = (199, 230, 189)
+centrecirclethickness = 3
+centrelinethickness = 3
 
 textcolour = (0, 0, 0)
 textposition = (215, 25)
@@ -59,24 +59,18 @@ textposition = (215, 25)
 pitchcornerx = int(np.floor((windowwidth - pitchwidth)/2))
 pitchcornery = int(np.floor((windowheight - pitchheight)/2))
 
-w1 = pitchcornerx - 4*playerradius
-w2 = pitchcornery - 2*playerradius
-w3 = pitchwidth + 8*playerradius
-w4 = pitchheight + 4*playerradius
 
 goalcornery = int(np.floor((windowheight - goalsize)/2))
-y3 = 2*ballradius + 5
-y1 = pitchcornerx - y3
+y1 = pitchcornerx - 30
 
 z1 = pitchcornerx + pitchwidth
 z2 = goalcornery
-z3 = y3
 
 a1 = y1 + 2*ballradius
-a2 = goalcornery
+a2 = int(np.floor(goalcornery-goallinethickness/2))
 
 b1 = z1
-b2 = goalcornery
+b2 = int(np.floor(goalcornery-goallinethickness/2))
 
 movespacex = [playerradius, windowwidth - playerradius]
 movespacey = [playerradius, windowheight - playerradius]
@@ -139,13 +133,14 @@ def redrawgamewindow():
     pygame.draw.rect(win, bordercolour, (0, 0, windowwidth, windowheight))
     pygame.draw.rect(win, pitchcolour, (pitchcornerx, pitchcornery, pitchwidth, pitchheight))
     pygame.draw.rect(win, pitchcolour, (pitchcornerx - 30, goalcornery, 30, goalsize))
-    pygame.draw.rect(win, pitchcolour, (z1, z2, 30, goalsize))
-    pygame.draw.rect(win, goallinecolour, (a1, a2, goallinethickness, goalsize))
-    pygame.draw.rect(win, goallinecolour, (b1, b2, goallinethickness, goalsize))
+    pygame.draw.rect(win, pitchcolour, (windowwidth - pitchcornerx, goalcornery, 30, goalsize))
+    pygame.draw.rect(win, goallinecolour, (pitchcornerx - goallinethickness // 2, pitchcornery - goallinethickness // 2, goallinethickness, pitchheight + goallinethickness))
+    pygame.draw.rect(win, goallinecolour, (windowwidth- pitchcornerx - goallinethickness // 2, pitchcornery - goallinethickness // 2, goallinethickness, pitchheight + goallinethickness))
+    pygame.draw.rect(win, goallinecolour, (pitchcornerx - goallinethickness // 2, pitchcornery - goallinethickness // 2, pitchwidth + goallinethickness, goallinethickness))
+    pygame.draw.rect(win, goallinecolour, (pitchcornerx - goallinethickness // 2, windowheight - pitchcornery - goallinethickness // 2, pitchwidth + goallinethickness, goallinethickness))
 
     pygame.draw.ellipse(win, centrecirclecolour, (ballstart[0] - centrecircleradius, ballstart[1] - centrecircleradius, 2*centrecircleradius, 2*centrecircleradius), centrecirclethickness)
-    pygame.draw.rect(win, centrecirclecolour, (pitchcornerx + pitchwidth // 2 - centrelinethickness // 2, pitchcornery, centrelinethickness, pitchheight // 2 - centrecircleradius))
-    pygame.draw.rect(win, centrecirclecolour, (pitchcornerx + pitchwidth // 2 - centrelinethickness // 2, pitchcornery + pitchheight // 2 + centrecircleradius, centrelinethickness, pitchheight // 2 - centrecircleradius))
+    pygame.draw.rect(win, centrecirclecolour, (windowwidth // 2 - centrelinethickness // 2, pitchcornery, centrelinethickness, pitchheight))
 
     red.draw(win)
     pink.draw(win)
@@ -228,10 +223,10 @@ red = player(redstart[0], redstart[1], redcolour)
 pink = player(pinkstart[0], pinkstart[1], pinkcolour)
 b = ball(ballstart[0], ballstart[1])
 
-redgoalpost1 = goalpost(a1 + goallinethickness, a2)
-redgoalpost2 = goalpost(a1 + goallinethickness, a2 + goalsize)
-pinkgoalpost1 = goalpost(b1, b2)
-pinkgoalpost2 = goalpost(b1, b2 + goalsize)
+redgoalpost1 = goalpost(pitchcornerx, goalcornery)
+redgoalpost2 = goalpost(pitchcornerx, goalcornery + goalsize)
+pinkgoalpost1 = goalpost(windowwidth - pitchcornerx, goalcornery)
+pinkgoalpost2 = goalpost(windowwidth - pitchcornerx, goalcornery + goalsize)
 
 goalposts = [redgoalpost1, redgoalpost2, pinkgoalpost1, pinkgoalpost2]
 shitthatmoves = [red, pink, b]
