@@ -10,3 +10,5 @@ GAME 5 fixed bug where you could push ball out of play area, and leave play area
 
 Created (hopefully the final one) GAME 6 - the player who conceded the last goal now must kick off (red kicks off round one) and the other player is prvented from exiting his half/ entering the middle circle. Pink also can be controlled with a keyboard now (see file for new controls). All that is missing is a timer/score cap and I am not sure what that is meant to be.
 STEFAN 25/07/2018 12:42 BST
+
+Diamor's changes have been combined with mine and are now also in GAME 6. STEFAN 25/07/2018 15:43 BST
