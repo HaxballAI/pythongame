@@ -1,4 +1,7 @@
 import pygame
+
+# adds antialiasing to game, makes it look SmoothAndSilky(TM)
+from pygame import gfxdraw
 import numpy as np
 
 windowwidth = 840
@@ -46,6 +49,7 @@ pinkstart = (640, 200)
 ballstart = (420, 200)
 goalpostradius = 8
 goalpostbouncingquotient = 0.5
+goalpostborderthickness = 3
 goallinethickness = 3
 kickingcircleradius = 15
 kickingcirclethickness = 2
@@ -134,16 +138,24 @@ class player(object):
         self.radius = playerradius
 
     def draw(self, win):
+        x = tuple(self.pos.astype(int))[0]
+        y = tuple(self.pos.astype(int))[1]
 
-        pygame.draw.circle(win, self.colour, tuple(self.pos.astype(int)), playerradius)
         if self.kicking == True:
-            pygame.draw.ellipse(win, kickingcirclecolour, (
-                self.pos[0] - kickingcircleradius, self.pos[1] - kickingcircleradius, 2 * kickingcircleradius,
-                2 * kickingcircleradius), kickingcirclethickness)
+            pygame.gfxdraw.filled_circle(win, x, y,
+                kickingcircleradius, kickingcirclecolour)
+            pygame.gfxdraw.aacircle(win, x, y,
+                kickingcircleradius, kickingcirclecolour)
+
         else:
-            pygame.draw.ellipse(win, (0, 0, 0), (
-                self.pos[0] - kickingcircleradius, self.pos[1] - kickingcircleradius, 2 * kickingcircleradius,
-                2 * kickingcircleradius), kickingcirclethickness)
+            pygame.gfxdraw.filled_circle(win, x, y,
+                kickingcircleradius, (0,0,0))
+            pygame.gfxdraw.aacircle(win, x, y,
+                kickingcircleradius, (0,0,0))
+
+        pygame.gfxdraw.filled_circle(win, x, y, playerradius-kickingcirclethickness, self.colour)
+        pygame.gfxdraw.aacircle(win, x, y, playerradius-kickingcirclethickness, self.colour)
+
 
     def reset(self):
 
@@ -191,9 +203,14 @@ class ball(object):
         self.radius = ballradius
 
     def draw(self, win):
-        pygame.draw.circle(win, (255, 255, 255), tuple(self.pos.astype(int)), ballradius)
-        pygame.draw.ellipse(win, (0, 0, 0,),
-                            (self.pos[0] - ballradius, self.pos[1] - ballradius, 2 * ballradius, 2 * ballradius), 2)
+        x = tuple(self.pos.astype(int))[0]
+        y = tuple(self.pos.astype(int))[1]
+
+        pygame.gfxdraw.filled_circle(win, x, y, ballradius+2, (0, 0, 0))
+        pygame.gfxdraw.aacircle(win, x, y, ballradius+2, (0, 0, 0))
+        pygame.gfxdraw.filled_circle(win, x, y, ballradius, (255, 255, 255))
+        pygame.gfxdraw.aacircle(win, x, y, ballradius, (255, 255, 255))
+
 
     def reset(self):
         # position vectors
@@ -217,7 +234,14 @@ class goalpost(object):
         self.radius = goalpostradius
 
     def draw(self, win):
-        pygame.draw.circle(win, goalpostcolour, tuple(self.pos.astype(int)), goalpostradius)
+        x = tuple(self.pos.astype(int))[0]
+        y = tuple(self.pos.astype(int))[1]
+
+        pygame.gfxdraw.filled_circle(win, x, y, goalpostradius, (0, 0, 0))
+        pygame.gfxdraw.aacircle(win, x, y, goalpostradius, (0, 0, 0))
+        pygame.gfxdraw.filled_circle(win, x, y, goalpostradius-goalpostborderthickness, goalpostcolour)
+        pygame.gfxdraw.aacircle(win, x, y, goalpostradius-goalpostborderthickness, goalpostcolour)
+
 
 
 # the object for blocking the player not kicking off from entering the centre
@@ -264,20 +288,26 @@ def redrawgamewindow():
     pitchwidth + goallinethickness, goallinethickness))
 
     # draws center circle
-    pygame.draw.ellipse(win, centrecirclecolour, (
-    ballstart[0] - centrecircleradius, ballstart[1] - centrecircleradius, 2 * centrecircleradius,
-    2 * centrecircleradius), centrecirclethickness)
+    pygame.gfxdraw.filled_circle(win, ballstart[0], ballstart[1], centrecircleradius, centrecirclecolour)
+    pygame.gfxdraw.aacircle(win, ballstart[0], ballstart[1], centrecircleradius, centrecirclecolour)
+
+    pygame.gfxdraw.filled_circle(win, ballstart[0], ballstart[1],
+                            centrecircleradius-centrecirclethickness, pitchcolour)
+    pygame.gfxdraw.aacircle(win, ballstart[0], ballstart[1],
+                            centrecircleradius-centrecirclethickness, pitchcolour)
+
     pygame.draw.rect(win, centrecirclecolour,
                      (windowwidth // 2 - centrelinethickness // 2, pitchcornery, centrelinethickness, pitchheight))
 
     # draws environment objects
+    b.draw(win)
+
     for obj in movingobjects:
         obj.draw(win)
 
     for goal in goalposts:
         goal.draw(win)
 
-    b.draw(win)
 
     # draws score
     string = str(redscore) + ":" + str(pinkscore)
