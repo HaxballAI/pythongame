@@ -14,3 +14,5 @@ STEFAN 25/07/2018 12:42 BST
 Diamor's changes have been combined with mine and are now also in GAME 6. STEFAN 25/07/2018 15:43 BST
 wasd to control red, v to kick.
 arrows to control pink, RCTRL to kick.
+
+tried to improve collisions. There are still a couple collision issues having to do with pushing the ball aginst a wall or corner and kicking PHILIP 7/17/18 2:50 PM EST
