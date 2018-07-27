@@ -22,8 +22,8 @@ font = pygame.font.Font(None, 50)
 # the first players are controlled manually
 # this was added because it will end up being added anyways
 # it also allows us to test the robustness of player-player collisions when there are large numbers of players
-redteamsize = 1
-pinkteamsize = 1
+redteamsize = 5
+pinkteamsize = 5
 
 # defines terminal game parameters
 maxscore = 1
@@ -134,6 +134,7 @@ class player(object):
         # player properties
         self.colour = colour
         self.kicking = False
+        self.newkick = True
         self.bouncingquotient = playerbouncing
         self.radius = playerradius
         self.mass = 1 / playerinvmass
@@ -142,7 +143,7 @@ class player(object):
         x = tuple(self.pos.astype(int))[0]
         y = tuple(self.pos.astype(int))[1]
 
-        if self.kicking == True:
+        if self.kicking == True and self.newkick == True:
             pygame.gfxdraw.filled_circle(win, x, y,
                 kickingcircleradius, kickingcirclecolour)
             pygame.gfxdraw.aacircle(win, x, y,
@@ -173,6 +174,7 @@ class player(object):
 
         # player properties
         self.kicking = False
+        self.newkick = True
 
     def dist(self, obj):
         return np.linalg.norm(obj.pos - self.pos)
@@ -314,7 +316,7 @@ def redrawgamewindow():
     # draws score
     string = str(redscore) + ":" + str(pinkscore)
     text = font.render(string, True, (255, 255, 255))
-    win.blit(text, (215, 25))
+    win.blit(text, (100, 25))
 
     # draws time
     timetpl = timeformat(timeelapsed)
@@ -362,19 +364,17 @@ def collision(obj1, obj2):
     obj1.velocity = obj1newnormalvelocity * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
     obj2.velocity = obj1newnormalvelocity * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
-    obj1.pos = centerofmass + (2 * (obj1.radius + obj2.radius) - distance) * collisionnormal * obj2.mass / (obj1.mass + obj2.mass)
-    obj2.pos = centerofmass - (2 * (obj1.radius + obj2.radius) - distance) * collisionnormal * obj1.mass / (obj1.mass + obj2.mass)
-
-#+ 1.1 * (obj1newnormalvelocity * collisionnormal * (obj1.radius + obj2.radius)) / (obj1newnormalvelocity + obj2newnormalvelocity)
-#obj2.pos = centerofmass - 1.1 * (obj2newnormalvelocity * collisionnormal * (obj1.radius + obj2.radius)) / (obj1newnormalvelocity + obj2newnormalvelocity)
+    obj1.pos = centerofmass + ((obj1.radius + obj2.radius) + bouncingq * (obj1.radius + obj2.radius - distance)) * collisionnormal * obj2.mass / (obj1.mass + obj2.mass)
+    obj2.pos = centerofmass - ((obj1.radius + obj2.radius) + bouncingq * (obj1.radius + obj2.radius - distance)) * collisionnormal * obj1.mass / (obj1.mass + obj2.mass)
 
 # defines object-goalpost collision
 def collisiongoalpost(obj1, obj2):
     direction = (obj1.pos - obj2.pos)
+    distance = np.linalg.norm(direction)
     bouncingq = obj1.bouncingquotient * obj2.bouncingquotient
 
     # calculates normal and tangent vectors
-    collisionnormal = direction / (np.linalg.norm(direction))
+    collisionnormal = direction / distance
     collisiontangent = np.array([direction[1], - direction[0]]) / (np.linalg.norm(direction))
 
     # updates components
@@ -388,7 +388,7 @@ def collisiongoalpost(obj1, obj2):
     obj1.velocity = - velocityafter * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
     obj2.velocity = velocityafter * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
-    obj2.pos = obj2.pos - collisionnormal * (obj1.radius + obj2.radius)
+    obj2.pos = obj2.pos - collisionnormal * (2 * (obj1.radius + obj2.radius) - distance)
 
 
 # handles kick interaction
@@ -561,6 +561,7 @@ while run:
         reds[0].kicking = True
     else:
         reds[0].kicking = False
+        reds[0].newkick = True
 
     # pink movement controls
     if keys[pygame.K_LEFT]:
@@ -592,13 +593,13 @@ while run:
         pinks[0].kicking = True
     else:
         pinks[0].kicking = False
-
+        pinks[0].newkick = True
     # moves the players
     for player in players:
-        if player.kicking == False:
-            player.velocity = np.array(player.velocity) + player.acc * player.acceleration
-        else:
+        if player.kicking == True and player.newkick == True:
             player.velocity = np.array(player.velocity) + player.acc * kickaccel
+        else:
+            player.velocity = np.array(player.velocity) + player.acc * player.acceleration
 
         player.velocity = player.velocity * playerdamping
         player.pos += player.velocity
@@ -612,15 +613,6 @@ while run:
         keep_player_in_movespace(player)
 
     keep_ball_in_movespace(b)
-
-    # handles kicks
-    for player in players:
-        if player.dist(b) <= playerradius + ballradius + 4:
-
-            kickedoff = True
-
-            if player.kicking == True:
-                kick(player, b)
 
     # handles player-ball collisions
     for player in players:
@@ -642,6 +634,19 @@ while run:
             distance = players[i].dist(players[j])
             if players[i].idx != players[j].idx and distance <= 2 * playerradius:
                 collision(players[i], players[j])
+
+    # handles kicks
+    for player in players:
+        if player.dist(b) <= playerradius + ballradius + 4:
+
+            kickedoff = True
+
+            if player.kicking == True and player.newkick == True:
+                kick(player, b)
+                player.newkick = False
+            elif player.kicking == False:
+                player.newkick = True
+
 
     # updates score
     G = goal(b, redscore, pinkscore, redlastgoal, kickedoff)
