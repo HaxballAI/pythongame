@@ -22,8 +22,8 @@ font = pygame.font.Font(None, 50)
 # the first players are controlled manually
 # this was added because it will end up being added anyways
 # it also allows us to test the robustness of player-player collisions when there are large numbers of players
-redteamsize = 5
-pinkteamsize = 5
+redteamsize = 1
+pinkteamsize = 1
 
 # defines terminal game parameters
 maxscore = 1
@@ -136,6 +136,7 @@ class player(object):
         self.kicking = False
         self.bouncingquotient = playerbouncing
         self.radius = playerradius
+        self.mass = 1 / playerinvmass
 
     def draw(self, win):
         x = tuple(self.pos.astype(int))[0]
@@ -201,6 +202,7 @@ class ball(object):
         # ball properties
         self.bouncingquotient = ballbouncing
         self.radius = ballradius
+        self.mass = 1 / ballinvmass
 
     def draw(self, win):
         x = tuple(self.pos.astype(int))[0]
@@ -340,25 +342,31 @@ def redrawgamewindow():
 # defines object-object collision
 def collision(obj1, obj2):
     direction = (obj1.pos - obj2.pos)
+    distance = (np.linalg.norm(direction))
     bouncingq = obj1.bouncingquotient * obj2.bouncingquotient
+    centerofmass = (obj1.pos * obj1.mass + obj2.pos * obj2.mass) / (obj1.mass + obj2.mass)
 
     # calculates normal and tangent vectors
-    collisionnormal = direction / (np.linalg.norm(direction))
+    collisionnormal = direction / distance
     collisiontangent = np.array([direction[1], - direction[0]]) / (np.linalg.norm(direction))
 
     # updates object components
-    obj1component = np.dot(np.array(obj1.velocity), collisionnormal)
-    obj2component = np.dot(np.array(obj2.velocity), collisionnormal)
+    obj1normalvelocity = np.dot(np.array(obj1.velocity), collisionnormal)
+    obj2normalvelocity = np.dot(np.array(obj2.velocity), collisionnormal)
 
-    velocityafter = (obj1component + obj2component) * bouncingq * 2
+    obj1newnormalvelocity = (bouncingq * obj2.mass * (obj2normalvelocity - obj1normalvelocity) + obj1.mass * obj1normalvelocity + obj2.mass * obj2normalvelocity) / (obj1.mass + obj2.mass)
+    obj2newnormalvelocity = (bouncingq * obj1.mass * (obj1normalvelocity - obj2normalvelocity) + obj2.mass * obj2normalvelocity + obj1.mass * obj1normalvelocity) / (obj2.mass + obj1.mass)
     obj1tangentvelocity = np.dot(np.array(obj1.velocity), collisiontangent)
     obj2tangentvelocity = np.dot(np.array(obj2.velocity), collisiontangent)
 
-    obj1.velocity = velocityafter * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
-    obj2.velocity = velocityafter * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
+    obj1.velocity = obj1newnormalvelocity * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
+    obj2.velocity = obj1newnormalvelocity * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
-    obj2.pos = obj1.pos - collisionnormal * (obj1.radius + obj2.radius)
+    obj1.pos = centerofmass + (2 * (obj1.radius + obj2.radius) - distance) * collisionnormal * obj2.mass / (obj1.mass + obj2.mass)
+    obj2.pos = centerofmass - (2 * (obj1.radius + obj2.radius) - distance) * collisionnormal * obj1.mass / (obj1.mass + obj2.mass)
 
+#+ 1.1 * (obj1newnormalvelocity * collisionnormal * (obj1.radius + obj2.radius)) / (obj1newnormalvelocity + obj2newnormalvelocity)
+#obj2.pos = centerofmass - 1.1 * (obj2newnormalvelocity * collisionnormal * (obj1.radius + obj2.radius)) / (obj1newnormalvelocity + obj2newnormalvelocity)
 
 # defines object-goalpost collision
 def collisiongoalpost(obj1, obj2):
@@ -370,9 +378,9 @@ def collisiongoalpost(obj1, obj2):
     collisiontangent = np.array([direction[1], - direction[0]]) / (np.linalg.norm(direction))
 
     # updates components
-    obj1component = np.dot(np.array(obj1.velocity), collisionnormal)
-    obj2component = np.dot(np.array(obj2.velocity), collisionnormal)
-    velocityafter = (obj1component + obj2component) * bouncingq * 2
+    obj1normalvelocity = np.dot(np.array(obj1.velocity), collisionnormal)
+    obj2normalvelocity = np.dot(np.array(obj2.velocity), collisionnormal)
+    velocityafter = (obj1normalvelocity + obj2normalvelocity) * bouncingq * 2
 
     obj1tangentvelocity = np.dot(np.array(obj1.velocity), collisiontangent)
     obj2tangentvelocity = np.dot(np.array(obj2.velocity), collisiontangent)
@@ -380,7 +388,7 @@ def collisiongoalpost(obj1, obj2):
     obj1.velocity = - velocityafter * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
     obj2.velocity = velocityafter * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
-    obj2.pos = obj1.pos - collisionnormal * (obj1.radius + obj2.radius + 1)
+    obj2.pos = obj2.pos - collisionnormal * (obj1.radius + obj2.radius)
 
 
 # handles kick interaction
@@ -611,11 +619,13 @@ while run:
 
             kickedoff = True
 
-            if player.kicking == False:
-                if player.dist(b) <= playerradius + ballradius:
-                    collision(b, player)
-            else:
+            if player.kicking == True:
                 kick(player, b)
+
+    # handles player-ball collisions
+    for player in players:
+        if player.dist(b) <= playerradius + ballradius:
+            collision(b, player)
 
     # checks for movingobject-goal collisions
     for thing in movingobjects:
