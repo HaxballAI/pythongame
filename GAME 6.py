@@ -49,7 +49,7 @@ pinkstart = (640, 200)
 ballstart = (420, 200)
 goalpostradius = 8
 goalpostbouncingquotient = 0.5
-goalpostborderthickness = 3
+goalpostborderthickness = 2
 goallinethickness = 3
 kickingcircleradius = 15
 kickingcirclethickness = 2
@@ -321,18 +321,18 @@ def redrawgamewindow():
     win.blit(timetext, (600, 25))
 
     # determine if game is won and handles end game behaviour
-    if redscore >= maxscore:
-        text = font.render("Red Team Won", True, (255, 255, 255))
-        coord = text.get_rect(center = (windowwidth // 2, windowheight // 2))
-        win.blit(text, coord)
-        global run
-        run = False
-    elif pinkscore >= maxscore:
-        text = font.render("Pink Team Won", True, (255, 255, 255))
-        coord = text.get_rect(center=(windowwidth // 2, windowheight // 2))
-        win.blit(text, coord)
-        global run
-        run = False
+#    if redscore >= maxscore:
+#        text = font.render("Red Team Won", True, (255, 255, 255))
+#        coord = text.get_rect(center = (windowwidth // 2, windowheight // 2))
+#        win.blit(text, coord)
+#        global run
+#        run = False
+#    elif pinkscore >= maxscore:
+#        text = font.render("Pink Team Won", True, (255, 255, 255))
+#        coord = text.get_rect(center=(windowwidth // 2, windowheight // 2))
+#        win.blit(text, coord)
+#        global run
+#        run = False
 
     pygame.display.update()
 
@@ -357,7 +357,7 @@ def collision(obj1, obj2):
     obj1.velocity = velocityafter * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
     obj2.velocity = velocityafter * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
-    obj2.pos = obj1.pos - collisionnormal * (obj1.radius + obj2.radius + 1)
+    obj2.pos = obj1.pos - collisionnormal * (obj1.radius + obj2.radius)
 
 
 # defines object-goalpost collision
@@ -436,16 +436,16 @@ def keep_ball_in_movespace(ball):
         else:
             ball.velocity[0] = - 0.5 * ball.velocity[0]
             if ball.pos[0] <= ballspacex[0]:
-                ball.pos[0] = ballspacex[0]
+                ball.pos[0] = ballspacex[0] + (ballspacex[0] - ball.pos[0]) / 2
 
             if ball.pos[0] >= ballspacex[1]:
-                ball.pos[0] = ballspacex[1]
+                ball.pos[0] = ballspacex[1] + (ballspacex[1] - ball.pos[0]) / 2
     if ball.pos[1] <= ballspacey[0] or b.pos[1] >= ballspacey[1]:
         ball.velocity[1] = - 0.5 * b.velocity[1]
         if ball.pos[1] <= ballspacey[0]:
-            ball.pos[1] = ballspacey[0]
+            ball.pos[1] = ballspacey[0] + (ballspacey[0] - ball.pos[1]) / 2
         if ball.pos[1] >= ballspacey[1]:
-            ball.pos[1] = ballspacey[1]
+            ball.pos[1] = ballspacey[1] + (ballspacey[1] - ball.pos[1]) / 2
 
 
 # keeps players not kicking off away from the centre at the start of the game
@@ -500,12 +500,6 @@ redlastgoal = False
 run = True
 while run:
     timeelapsed += clock.tick(60)
-
-    # should keep things on board
-    for player in players:
-        keep_player_in_movespace(player)
-
-    keep_ball_in_movespace(b)
 
     # blocks the player that isn't kicking off from entering the circle/ other half
     if kickedoff == False:
@@ -604,6 +598,12 @@ while run:
     # moves the ball
     b.velocity = np.array(b.velocity) * balldamping
     b.pos += b.velocity
+
+    # should keep things on board
+    for player in players:
+        keep_player_in_movespace(player)
+
+    keep_ball_in_movespace(b)
 
     # handles kicks
     for player in players:
