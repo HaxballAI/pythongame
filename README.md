@@ -19,4 +19,4 @@ tried to improve collisions. There are still a couple collision issues having to
 
 Made it possible to have 0 balls on a team (for testing) and also to disable the alternating kickoffs mechanic in the game features at the top. STEFAN  29/07/2018 13:49 BST
 
-fixed bug where if opposing team player pushed against each other, red would lose. Fixed ball and player behavior when pushing the ball into a corner and kicking. Comsetic changes PHILIP 7/29/18 9:58 AM EST
+fixed bug where if opposing team players pushed against each other, red would lose. Fixed ball and player behavior when pushing the ball into a corner and kicking. Comsetic changes PHILIP 7/29/18 9:58 AM EST
