@@ -15,6 +15,8 @@ Diamor's changes have been combined with mine and are now also in GAME 6. STEFAN
 wasd to control red, v to kick.
 arrows to control pink, RCTRL to kick.
 
-tried to improve collisions. There are still a couple collision issues having to do with pushing the ball aginst a wall or corner and kicking PHILIP 7/17/18 2:50 PM EST
+tried to improve collisions. There are still a couple collision issues having to do with pushing the ball aginst a wall or corner and kicking PHILIP 7/27/18 2:50 PM EST
 
 Made it possible to have 0 balls on a team (for testing) and also to disable the alternating kickoffs mechanic in the game features at the top. STEFAN  29/07/2018 13:49 BST
+
+fixed bug where if opposing team player pushed against each other, red would lose. Fixed ball and player behavior when pushing the ball into a corner and kicking. Comsetic changes PHILIP 7/29/18 9:58 AM EST
