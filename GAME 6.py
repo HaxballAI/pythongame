@@ -22,8 +22,8 @@ font = pygame.font.Font(None, 50)
 # the first players are controlled manually
 # this was added because it will end up being added anyways
 # it also allows us to test the robustness of player-player collisions when there are large numbers of players
-redteamsize = 5
-pinkteamsize = 5
+redteamsize = 1
+pinkteamsize = 0
 
 # defines terminal game parameters
 maxscore = 1
@@ -69,6 +69,7 @@ centrecircleradius = 70
 centrecirclecolour = (199, 230, 189)
 centrecirclethickness = 3
 centrelinethickness = 3
+alternatingkickoffs = False
 
 # defines text properties
 textcolour = (0, 0, 0)
@@ -502,7 +503,7 @@ pinkscore = 0
 redscore = 0
 
 # for kickoff
-kickedoff = True
+kickedoff = False
 redlastgoal = False
 
 run = True
@@ -510,90 +511,94 @@ while run:
     timeelapsed += clock.tick(60)
 
     # blocks the player that isn't kicking off from entering the circle/ other half
-    if kickedoff == False:
-        if redlastgoal == True:
-            for i in range(len(reds)):
+    if alternatingkickoffs == True:
+        if kickedoff == False:
+            if redlastgoal == True:
+                for i in range(len(reds)):
 
-                if reds[i].pos[0] >= windowwidth // 2 - playerradius:
-                    reds[i].velocity[0] = 0
-                    reds[i].pos[0] = windowwidth // 2 - playerradius
+                    if reds[i].pos[0] >= windowwidth // 2 - playerradius:
+                        reds[i].velocity[0] = 0
+                        reds[i].pos[0] = windowwidth // 2 - playerradius
 
-                keepoutofcentre(reds[i])
-        else:
-            for i in range(len(pinks)):
+                    keepoutofcentre(reds[i])
+            else:
+                for i in range(len(pinks)):
 
-                if pinks[i].pos[0] <= windowwidth // 2 + playerradius:
-                    pinks[i].velocity[0] = 0
-                    pinks[i].pos[0] = windowwidth // 2 + playerradius
+                    if pinks[i].pos[0] <= windowwidth // 2 + playerradius:
+                        pinks[i].velocity[0] = 0
+                        pinks[i].pos[0] = windowwidth // 2 + playerradius
 
-                keepoutofcentre(pinks[i])
+                    keepoutofcentre(pinks[i])
 
     # handles the key events
     keys = pygame.key.get_pressed()
 
     # red movement controls
-    if keys[pygame.K_a]:
-        if keys[pygame.K_w]:
-            reds[0].acc = np.array([-1.0, -1.0]) / (2) ** (1 / 2)
+    if len(reds) > 0:
+        if keys[pygame.K_a]:
+            if keys[pygame.K_w]:
+                reds[0].acc = np.array([-1.0, -1.0]) / (2) ** (1 / 2)
+            elif keys[pygame.K_s]:
+                reds[0].acc = np.array([-1.0, 1.0]) / (2) ** (1 / 2)
+            else:
+                reds[0].acc = np.array([-1.0, 0.0])
+
+        elif keys[pygame.K_d]:
+            if keys[pygame.K_w]:
+                reds[0].acc = np.array([1.0, -1.0]) / (2) ** (1 / 2)
+            elif keys[pygame.K_s]:
+                reds[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
+            else:
+                reds[0].acc = np.array([1.0, 0.0])
+
+        elif keys[pygame.K_w]:
+            reds[0].acc = np.array([0.0, -1.0])
+
         elif keys[pygame.K_s]:
-            reds[0].acc = np.array([-1.0, 1.0]) / (2) ** (1 / 2)
+            reds[0].acc = np.array([0.0, 1.0])
+
         else:
-            reds[0].acc = np.array([-1.0, 0.0])
+            reds[0].acc = np.array([0.0, 0.0])
 
-    elif keys[pygame.K_d]:
-        if keys[pygame.K_w]:
-            reds[0].acc = np.array([1.0, -1.0]) / (2) ** (1 / 2)
-        elif keys[pygame.K_s]:
-            reds[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
+        if keys[pygame.K_v]:
+            reds[0].kicking = True
         else:
-            reds[0].acc = np.array([1.0, 0.0])
-
-    elif keys[pygame.K_w]:
-        reds[0].acc = np.array([0.0, -1.0])
-
-    elif keys[pygame.K_s]:
-        reds[0].acc = np.array([0.0, 1.0])
-
-    else:
-        reds[0].acc = np.array([0.0, 0.0])
-
-    if keys[pygame.K_v]:
-        reds[0].kicking = True
-    else:
-        reds[0].kicking = False
-        reds[0].newkick = True
+            reds[0].kicking = False
+            reds[0].newkick = True
 
     # pink movement controls
-    if keys[pygame.K_LEFT]:
-        if keys[pygame.K_UP]:
-            pinks[0].acc = np.array([- 1.0, - 1.0]) / (2) ** (1 / 2)
+    if len(pinks) > 0:
+        if keys[pygame.K_LEFT]:
+            if keys[pygame.K_UP]:
+                pinks[0].acc = np.array([- 1.0, - 1.0]) / (2) ** (1 / 2)
+            elif keys[pygame.K_DOWN]:
+                pinks[0].acc = np.array([- 1.0, 1.0]) / (2) ** (1 / 2)
+            else:
+                pinks[0].acc = np.array([- 1.0, 0.0])
+
+        elif keys[pygame.K_RIGHT]:
+            if keys[pygame.K_UP]:
+                pinks[0].acc = np.array([1.0, - 1.0]) / (2) ** (1 / 2)
+            elif keys[pygame.K_DOWN]:
+                pinks[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
+            else:
+                pinks[0].acc = np.array([1.0, 0.0])
+
+        elif keys[pygame.K_UP]:
+            pinks[0].acc = np.array([0.0, -1.0])
+
         elif keys[pygame.K_DOWN]:
-            pinks[0].acc = np.array([- 1.0, 1.0]) / (2) ** (1 / 2)
+            pinks[0].acc = np.array([0.0, 1.0])
+
         else:
-            pinks[0].acc = np.array([- 1.0, 0.0])
+            pinks[0].acc = np.array([0.0, 0.0])
 
-    elif keys[pygame.K_RIGHT]:
-        if keys[pygame.K_UP]:
-            pinks[0].acc = np.array([1.0, - 1.0]) / (2) ** (1 / 2)
-        elif keys[pygame.K_DOWN]:
-            pinks[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
+        if keys[pygame.K_RCTRL]:
+            pinks[0].kicking = True
         else:
-            pinks[0].acc = np.array([1.0, 0.0])
-
-    elif keys[pygame.K_UP]:
-        pinks[0].acc = np.array([0.0, -1.0])
-
-    elif keys[pygame.K_DOWN]:
-        pinks[0].acc = np.array([0.0, 1.0])
-
-    else:
-        pinks[0].acc = np.array([0.0, 0.0])
-
-    if keys[pygame.K_RCTRL]:
-        pinks[0].kicking = True
-    else:
-        pinks[0].kicking = False
-        pinks[0].newkick = True
+            pinks[0].kicking = False
+            pinks[0].newkick = True
+    
     # moves the players
     for player in players:
         if player.kicking == True and player.newkick == True:
