@@ -23,7 +23,7 @@ font = pygame.font.Font(None, 50)
 # this was added because it will end up being added anyways
 # it also allows us to test the robustness of player-player collisions when there are large numbers of players
 redteamsize = 1
-pinkteamsize = 0
+blueteamsize = 1
 
 # defines terminal game parameters
 maxscore = 1
@@ -45,7 +45,7 @@ ballbouncing = 0.5
 
 # parameters for the pitch drawing
 redstart = (200, 200)
-pinkstart = (640, 200)
+bluestart = (640, 200)
 ballstart = (420, 200)
 goalpostradius = 8
 goalpostbouncingquotient = 0.5
@@ -55,8 +55,8 @@ kickingcircleradius = 15
 kickingcirclethickness = 2
 
 # defines colors used in drawing the map
-redcolour = (255, 0, 0)
-pinkcolour = (255, 0, 255)
+redcolour = (229, 110, 86)
+bluecolour = (86, 137, 229)
 ballcolour = (0, 0, 0)
 goallinecolour = (199, 230, 189)
 goalpostcolour = (150, 150, 150)
@@ -69,7 +69,6 @@ centrecircleradius = 70
 centrecirclecolour = (199, 230, 189)
 centrecirclethickness = 3
 centrelinethickness = 3
-alternatingkickoffs = False
 
 # defines text properties
 textcolour = (0, 0, 0)
@@ -315,7 +314,7 @@ def redrawgamewindow():
 
 
     # draws score
-    string = str(redscore) + ":" + str(pinkscore)
+    string = str(redscore) + ":" + str(bluescore)
     text = font.render(string, True, (255, 255, 255))
     win.blit(text, (100, 25))
 
@@ -332,8 +331,8 @@ def redrawgamewindow():
 #        win.blit(text, coord)
 #        global run
 #        run = False
-#    elif pinkscore >= maxscore:
-#        text = font.render("Pink Team Won", True, (255, 255, 255))
+#    elif bluescore >= maxscore:
+#        text = font.render("blue Team Won", True, (255, 255, 255))
 #        coord = text.get_rect(center=(windowwidth // 2, windowheight // 2))
 #        win.blit(text, coord)
 #        global run
@@ -357,13 +356,14 @@ def collision(obj1, obj2):
     obj1normalvelocity = np.dot(np.array(obj1.velocity), collisionnormal)
     obj2normalvelocity = np.dot(np.array(obj2.velocity), collisionnormal)
 
+    # inelastic collision formula
     obj1newnormalvelocity = (bouncingq * obj2.mass * (obj2normalvelocity - obj1normalvelocity) + obj1.mass * obj1normalvelocity + obj2.mass * obj2normalvelocity) / (obj1.mass + obj2.mass)
     obj2newnormalvelocity = (bouncingq * obj1.mass * (obj1normalvelocity - obj2normalvelocity) + obj2.mass * obj2normalvelocity + obj1.mass * obj1normalvelocity) / (obj2.mass + obj1.mass)
     obj1tangentvelocity = np.dot(np.array(obj1.velocity), collisiontangent)
     obj2tangentvelocity = np.dot(np.array(obj2.velocity), collisiontangent)
 
     obj1.velocity = obj1newnormalvelocity * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
-    obj2.velocity = obj1newnormalvelocity * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
+    obj2.velocity = obj2newnormalvelocity * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
     obj1.pos = centerofmass + ((obj1.radius + obj2.radius) + bouncingq * (obj1.radius + obj2.radius - distance)) * collisionnormal * obj2.mass / (obj1.mass + obj2.mass)
     obj2.pos = centerofmass - ((obj1.radius + obj2.radius) + bouncingq * (obj1.radius + obj2.radius - distance)) * collisionnormal * obj1.mass / (obj1.mass + obj2.mass)
@@ -371,7 +371,7 @@ def collision(obj1, obj2):
 # defines object-goalpost collision
 def collisiongoalpost(obj1, obj2):
     direction = (obj1.pos - obj2.pos)
-    distance = np.linalg.norm(direction)
+    distance = (np.linalg.norm(direction))
     bouncingq = obj1.bouncingquotient * obj2.bouncingquotient
 
     # calculates normal and tangent vectors
@@ -389,7 +389,8 @@ def collisiongoalpost(obj1, obj2):
     obj1.velocity = - velocityafter * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
     obj2.velocity = velocityafter * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
-    obj2.pos = obj2.pos - collisionnormal * (obj1.radius + obj2.radius)
+    obj2.pos = obj1.pos - collisionnormal * (obj1.radius + obj2.radius)
+
 
 
 # handles kick interaction
@@ -398,19 +399,19 @@ def kick(obj1, ball):
 
 
 # handles goal event
-def goal(ball, redscore, pinkscore, redlastgoal, kickedoff):
-    if ball.pos[0] <= a1:
-        pinkscore += 1
+def goal(ball, redscore, bluescore, redlastgoal, kickedoff):
+    if ball.pos[0] <= pitchcornerx:
+        bluescore += 1
         redlastgoal = False
         kickedoff = False
         resetmap()
 
-    elif ball.pos[0] >= b1 + 5:
+    elif ball.pos[0] >= windowwidth - pitchcornerx:
         redscore += 1
         redlastgoal = True
         kickedoff = False
         resetmap()
-    return [redscore, pinkscore, redlastgoal, kickedoff]
+    return [redscore, bluescore, redlastgoal, kickedoff]
 
 
 # resets the map
@@ -471,39 +472,39 @@ def keepoutofcentre(blocked):
 
 # initialises players
 reds = []
-pinks = []
+blues = []
 
 # for now, players are distributed evenly along the starting point as a proof of concept
 for i in range(redteamsize):
     reds.append(
-        player(redstart[0] + 50 * np.random.uniform(-1, 1), redstart[1] + 50 * np.random.uniform(-1, 1), redcolour))
+        player(redstart[0] + 0 * np.random.uniform(-1, 1), redstart[1] + 0 * np.random.uniform(-1, 1), redcolour))
 
-for i in range(pinkteamsize):
-    pinks.append(
-        player(pinkstart[0] + 50 * np.random.uniform(-1, 1), pinkstart[1] + 50 * np.random.uniform(-1, 1), pinkcolour))
+for i in range(blueteamsize):
+    blues.append(
+        player(bluestart[0] + 0 * np.random.uniform(-1, 1), bluestart[1] + 0 * np.random.uniform(-1, 1), bluecolour))
 
 b = ball(ballstart[0], ballstart[1])
 
 # initialises goalposts
 redgoalpost1 = goalpost(pitchcornerx, goalcornery)
 redgoalpost2 = goalpost(pitchcornerx, goalcornery + goalsize)
-pinkgoalpost1 = goalpost(windowwidth - pitchcornerx, goalcornery)
-pinkgoalpost2 = goalpost(windowwidth - pitchcornerx, goalcornery + goalsize)
+bluegoalpost1 = goalpost(windowwidth - pitchcornerx, goalcornery)
+bluegoalpost2 = goalpost(windowwidth - pitchcornerx, goalcornery + goalsize)
 
 # initialises object blocking centre
 centreblock = centrecircleblock()
 
 # collects objects into useful groups
-players = reds + pinks
+players = reds + blues
 movingobjects = players + [b]
-goalposts = [redgoalpost1, redgoalpost2, pinkgoalpost1, pinkgoalpost2]
+goalposts = [redgoalpost1, redgoalpost2, bluegoalpost1, bluegoalpost2]
 
 # initialises scores
-pinkscore = 0
+bluescore = 0
 redscore = 0
 
 # for kickoff
-kickedoff = False
+kickedoff = True
 redlastgoal = False
 
 run = True
@@ -511,94 +512,90 @@ while run:
     timeelapsed += clock.tick(60)
 
     # blocks the player that isn't kicking off from entering the circle/ other half
-    if alternatingkickoffs == True:
-        if kickedoff == False:
-            if redlastgoal == True:
-                for i in range(len(reds)):
+    if kickedoff == False:
+        if redlastgoal == True:
+            for i in range(len(reds)):
 
-                    if reds[i].pos[0] >= windowwidth // 2 - playerradius:
-                        reds[i].velocity[0] = 0
-                        reds[i].pos[0] = windowwidth // 2 - playerradius
+                if reds[i].pos[0] >= windowwidth // 2 - playerradius:
+                    reds[i].velocity[0] = 0
+                    reds[i].pos[0] = windowwidth // 2 - playerradius
 
-                    keepoutofcentre(reds[i])
-            else:
-                for i in range(len(pinks)):
+                keepoutofcentre(reds[i])
+        else:
+            for i in range(len(blues)):
 
-                    if pinks[i].pos[0] <= windowwidth // 2 + playerradius:
-                        pinks[i].velocity[0] = 0
-                        pinks[i].pos[0] = windowwidth // 2 + playerradius
+                if blues[i].pos[0] <= windowwidth // 2 + playerradius:
+                    blues[i].velocity[0] = 0
+                    blues[i].pos[0] = windowwidth // 2 + playerradius
 
-                    keepoutofcentre(pinks[i])
+                keepoutofcentre(blues[i])
 
     # handles the key events
     keys = pygame.key.get_pressed()
 
     # red movement controls
-    if len(reds) > 0:
-        if keys[pygame.K_a]:
-            if keys[pygame.K_w]:
-                reds[0].acc = np.array([-1.0, -1.0]) / (2) ** (1 / 2)
-            elif keys[pygame.K_s]:
-                reds[0].acc = np.array([-1.0, 1.0]) / (2) ** (1 / 2)
-            else:
-                reds[0].acc = np.array([-1.0, 0.0])
-
-        elif keys[pygame.K_d]:
-            if keys[pygame.K_w]:
-                reds[0].acc = np.array([1.0, -1.0]) / (2) ** (1 / 2)
-            elif keys[pygame.K_s]:
-                reds[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
-            else:
-                reds[0].acc = np.array([1.0, 0.0])
-
-        elif keys[pygame.K_w]:
-            reds[0].acc = np.array([0.0, -1.0])
-
+    if keys[pygame.K_a]:
+        if keys[pygame.K_w]:
+            reds[0].acc = np.array([-1.0, -1.0]) / (2) ** (1 / 2)
         elif keys[pygame.K_s]:
-            reds[0].acc = np.array([0.0, 1.0])
-
+            reds[0].acc = np.array([-1.0, 1.0]) / (2) ** (1 / 2)
         else:
-            reds[0].acc = np.array([0.0, 0.0])
+            reds[0].acc = np.array([-1.0, 0.0])
 
-        if keys[pygame.K_v]:
-            reds[0].kicking = True
+    elif keys[pygame.K_d]:
+        if keys[pygame.K_w]:
+            reds[0].acc = np.array([1.0, -1.0]) / (2) ** (1 / 2)
+        elif keys[pygame.K_s]:
+            reds[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
         else:
-            reds[0].kicking = False
-            reds[0].newkick = True
+            reds[0].acc = np.array([1.0, 0.0])
 
-    # pink movement controls
-    if len(pinks) > 0:
-        if keys[pygame.K_LEFT]:
-            if keys[pygame.K_UP]:
-                pinks[0].acc = np.array([- 1.0, - 1.0]) / (2) ** (1 / 2)
-            elif keys[pygame.K_DOWN]:
-                pinks[0].acc = np.array([- 1.0, 1.0]) / (2) ** (1 / 2)
-            else:
-                pinks[0].acc = np.array([- 1.0, 0.0])
+    elif keys[pygame.K_w]:
+        reds[0].acc = np.array([0.0, -1.0])
 
-        elif keys[pygame.K_RIGHT]:
-            if keys[pygame.K_UP]:
-                pinks[0].acc = np.array([1.0, - 1.0]) / (2) ** (1 / 2)
-            elif keys[pygame.K_DOWN]:
-                pinks[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
-            else:
-                pinks[0].acc = np.array([1.0, 0.0])
+    elif keys[pygame.K_s]:
+        reds[0].acc = np.array([0.0, 1.0])
 
-        elif keys[pygame.K_UP]:
-            pinks[0].acc = np.array([0.0, -1.0])
+    else:
+        reds[0].acc = np.array([0.0, 0.0])
 
+    if keys[pygame.K_v]:
+        reds[0].kicking = True
+    else:
+        reds[0].kicking = False
+        reds[0].newkick = True
+
+    # blue movement controls
+    if keys[pygame.K_LEFT]:
+        if keys[pygame.K_UP]:
+            blues[0].acc = np.array([- 1.0, - 1.0]) / (2) ** (1 / 2)
         elif keys[pygame.K_DOWN]:
-            pinks[0].acc = np.array([0.0, 1.0])
-
+            blues[0].acc = np.array([- 1.0, 1.0]) / (2) ** (1 / 2)
         else:
-            pinks[0].acc = np.array([0.0, 0.0])
+            blues[0].acc = np.array([- 1.0, 0.0])
 
-        if keys[pygame.K_RCTRL]:
-            pinks[0].kicking = True
+    elif keys[pygame.K_RIGHT]:
+        if keys[pygame.K_UP]:
+            blues[0].acc = np.array([1.0, - 1.0]) / (2) ** (1 / 2)
+        elif keys[pygame.K_DOWN]:
+            blues[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
         else:
-            pinks[0].kicking = False
-            pinks[0].newkick = True
-    
+            blues[0].acc = np.array([1.0, 0.0])
+
+    elif keys[pygame.K_UP]:
+        blues[0].acc = np.array([0.0, -1.0])
+
+    elif keys[pygame.K_DOWN]:
+        blues[0].acc = np.array([0.0, 1.0])
+
+    else:
+        blues[0].acc = np.array([0.0, 0.0])
+
+    if keys[pygame.K_RCTRL]:
+        blues[0].kicking = True
+    else:
+        blues[0].kicking = False
+        blues[0].newkick = True
     # moves the players
     for player in players:
         if player.kicking == True and player.newkick == True:
@@ -654,9 +651,9 @@ while run:
 
 
     # updates score
-    G = goal(b, redscore, pinkscore, redlastgoal, kickedoff)
+    G = goal(b, redscore, bluescore, redlastgoal, kickedoff)
     redscore = G[0]
-    pinkscore = G[1]
+    bluescore = G[1]
     redlastgoal = G[2]
     kickedoff = G[3]
     redrawgamewindow()
