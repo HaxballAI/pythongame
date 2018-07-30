@@ -474,6 +474,7 @@ def keepoutofcentre(blocked):
 
         
 # -------------------------REDBOT FUNCTIONS------------------
+
 def moveto(pv, player):
     directionvector = (pv[0] - player.pos[0], pv[1] - player.pos[1])
     distance = np.linalg.norm(directionvector)
