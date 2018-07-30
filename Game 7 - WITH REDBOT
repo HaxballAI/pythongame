@@ -472,6 +472,202 @@ def keepoutofcentre(blocked):
         centreblock.pos[0] = int(centreblock.pos[0])
         centreblock.pos[1] = int(centreblock.pos[1])
 
+        
+# -------------------------REDBOT FUNCTIONS------------------
+def moveto(pv, player):
+    directionvector = (pv[0] - player.pos[0], pv[1] - player.pos[1])
+    distance = np.linalg.norm(directionvector)
+    if distance > player.radius:
+        
+        angle = np.angle(directionvector[0] + directionvector[1]*1j)
+        if angle >= 7*pi/8 and angle <= pi:
+            angle = -2*pi + angle
+        
+        for i in range(-4, 4):
+            if angle >= i*pi/4 - pi/8 and angle < i*pi/4 + pi/8:
+                player.acc = np.array([np.cos(i*pi/4), np.sin(i*pi/4)])
+                
+def blockgoal(colour, player):
+    if colour == 'red':
+        goalcentre = np.array([pitchcornerx, goalcornery + goalsize//2])
+    if colour == 'pink':
+        goalcentre = np.array([windowwidth - pitchcornerx, goalcornery + goalsize//2])
+    balltogoal = goalcentre - b.pos
+    gradient = balltogoal[1]/balltogoal[0]
+    
+    constant1 = goalcentre[1] - b.radius - gradient * goalcentre[0]
+    constant2 = goalcentre[1] + b.radius - gradient * goalcentre[0]
+
+    if colour == 'red':
+        direction = -1
+        if player.pos[0] <= b.pos[0]:
+            behindball = True
+        else:
+            behindball = False
+    
+    if colour == 'pink':
+        direction = 1
+        if player.pos[0] <= b.pos[0]:
+            behindball = False
+        else:
+            behindball = True
+    
+    if behindball == True:
+        if player.pos[1] >= gradient*player.pos[0] + constant1 and player.pos[1] <= gradient*player.pos[0] + constant2:
+            return b.pos
+
+        elif player.pos[1] < gradient*player.pos[0] + constant1:
+            balltogoalnormal = np.array([balltogoal[1], -balltogoal[0]])
+            balltogoalnormal = balltogoalnormal/(np.linalg.norm(balltogoalnormal))
+            return player.pos + balltogoalnormal * (player.radius + 5)
+
+        elif player.pos[1] > gradient*player.pos[0] + constant2:
+            balltogoalnormal = np.array([balltogoal[1], -balltogoal[0]])
+            balltogoalnormal = balltogoalnormal/(np.linalg.norm(balltogoalnormal))
+            return player.pos - balltogoalnormal * (player.radius + 5)
+            
+    else:
+        if player.pos[1] < b.pos[1] - b.radius - player.radius or player.pos[1] > b.pos[1] + b.radius + player.radius or player.pos[0] > b.pos[0] + 30:
+            return player.pos + direction * np.array([2*player.radius, 0])
+        else:
+            if player.pos[1] <= goalcentre[1]:
+                return player.pos + np.array([0, 2*playerradius])
+            else:
+                return player.pos - np.array([0, 2*playerradius])
+                
+
+                
+def shoot(colour, player, opponents):
+    player.kicking = True
+    return b.pos
+        
+
+def shootnow(colour, player, opponents):
+    if colour == 'red':
+        goalcentre = np.array([pitchcornerx, goalcornery + goalsize//2])
+    if colour == 'pink':
+        goalcentre = np.array([windowwidth - pitchcornerx, goalcornery + goalsize//2])
+    playertoball = b.pos - player.pos
+    gradient = playertoball[1]/playertoball[0]
+    
+    constant0 = b.pos[1] - gradient * b.pos[0]
+    constant1 = goalcentre[1] - b.radius - gradient * goalcentre[0]
+    constant2 = goalcentre[1] + b.radius - gradient * goalcentre[0]
+    
+    clearshot = True
+    for opponent in opponents:
+        if opponent.pos[1] >= gradient*opponent.pos[0] + constant1 and opponent.pos[1] <= gradient*opponent.pos[0] + constant2:
+            clearshot = False
+    
+    ontarget = False
+    
+    if colour == 'pink':
+        xcoord = windowwidth-pitchcornerx
+    if colour == 'red':
+        xcoord = pitchcornerx
+        
+    if gradient * xcoord + constant0 < goalcornery + goalsize and gradient * xcoord + constant0 > goalcornery:
+        ontarget = True
+    
+    if ontarget == True and clearshot == True:
+        SHOOT = True
+    else:
+        SHOOT = False
+        
+        
+    return SHOOT
+
+def dribble(player, colour):
+    
+    getaboveit = False
+    getbelowit = False
+    positiontoshoot = False
+    
+    if colour == 'red':
+        xcoord = pitchcornerx
+        bound = 5/8 * windowwidth
+    else:
+        xcoord = windowwidth - pitchcornerx
+        bound = 3/8 * windowwidth
+        
+    if colour == 'red' and b.pos[0] > bound and b.pos[1] < goalcornery:
+        getaboveit = True
+    elif colour == 'red' and b.pos[0] > bound and b.pos[1] > goalcornery + goalsize:
+        getbelowit = True
+    elif colour == 'red' and b.pos[0]> bound:
+        positiontoshoot = True
+        
+    if colour == 'pink' and b.pos[0] < bound and b.pos[1] < goalcornery:
+        getaboveit = True
+    elif colour == 'pink' and b.pos[0] < bound and b.pos[1] > goalcornery + goalsize:
+        getbelowit = True
+    elif colour == 'pink' and b.pos[0]< bound:
+        positiontoshoot = True
+        
+    if getbelowit == True:
+        return b.pos + np.array([0, player.radius])
+    elif getaboveit == True:
+        return b.pos - np.array([0, player.radius])
+    elif positiontoshoot == True:
+        if colour == 'red':
+            return b.pos -np.array([player.radius, 0])*5/6
+        else:
+            return b.pos +np.array([player.radius, 0])*5/6
+    else:
+        goalcentre = np.array([xcoord, goalcornery + goalsize//2])
+        goaltoball = goalcentre - b.pos
+        goaltoball = goaltoball/np.linalg.norm(goaltoball)
+        return b.pos + goaltoball * (player.radius / 2)
+
+def getorders(player, colour, opponents):
+        
+    opponentpos = [opponent.pos[0] for opponent in opponents]
+    
+    if colour == 'red':
+        shootat = 'pink'
+        if b.pos[0] < windowwidth / 2 or b.pos[0] < player.pos[0]:
+            defending = True
+        else:
+            defending = False
+        q = max(opponentpos)
+        if q < player.pos[0] and player.pos[0] < b.pos[0] and b.pos[0] < 2*windowwidth/3:
+            send = True
+        else:
+            send = False
+        
+        
+    elif colour == 'pink':
+        shootat = 'red'
+        if b.pos[0] > windowwidth / 2:
+            defending = True
+        else:
+            defending = False
+        
+        q = min(opponentpos)
+        if q >player.pos[0] and player.pos[0] > b.pos[0] and b.pos[0] > 2*windowwidth/3:
+            send = True
+        else:
+            send = False    
+            
+            
+    if defending == True:
+        order = blockgoal(colour, player)
+        
+    elif shootnow('pink', reds[0], opponents) == True:
+        order = shoot(shootat, player, opponents)
+        
+    elif send == True:
+        order = shoot(shootat, player, opponents) #"SEND IT!"
+    
+    else:
+        order = dribble(player, colour)
+        
+    return order
+
+# -----------------------------------------------------------
+
+
+
 
 # initialises players
 reds = []
@@ -686,194 +882,4 @@ while run:
         if event.type == pygame.QUIT:
             run = False
             
-        
-# -------------------------REDBOT FUNCTIONS------------------
-def moveto(pv, player):
-    directionvector = (pv[0] - player.pos[0], pv[1] - player.pos[1])
-    distance = np.linalg.norm(directionvector)
-    if distance > player.radius:
-        
-        angle = np.angle(directionvector[0] + directionvector[1]*1j)
-        if angle >= 7*pi/8 and angle <= pi:
-            angle = -2*pi + angle
-        
-        for i in range(-4, 4):
-            if angle >= i*pi/4 - pi/8 and angle < i*pi/4 + pi/8:
-                player.acc = np.array([np.cos(i*pi/4), np.sin(i*pi/4)])
-                
-def blockgoal(colour, player):
-    if colour == 'red':
-        goalcentre = np.array([pitchcornerx, goalcornery + goalsize//2])
-    if colour == 'pink':
-        goalcentre = np.array([windowwidth - pitchcornerx, goalcornery + goalsize//2])
-    balltogoal = goalcentre - b.pos
-    gradient = balltogoal[1]/balltogoal[0]
-    
-    constant1 = goalcentre[1] - b.radius - gradient * goalcentre[0]
-    constant2 = goalcentre[1] + b.radius - gradient * goalcentre[0]
 
-    if colour == 'red':
-        direction = -1
-        if player.pos[0] <= b.pos[0]:
-            behindball = True
-        else:
-            behindball = False
-    
-    if colour == 'pink':
-        direction = 1
-        if player.pos[0] <= b.pos[0]:
-            behindball = False
-        else:
-            behindball = True
-    
-    if behindball == True:
-        if player.pos[1] >= gradient*player.pos[0] + constant1 and player.pos[1] <= gradient*player.pos[0] + constant2:
-            return b.pos
-
-        elif player.pos[1] < gradient*player.pos[0] + constant1:
-            balltogoalnormal = np.array([balltogoal[1], -balltogoal[0]])
-            balltogoalnormal = balltogoalnormal/(np.linalg.norm(balltogoalnormal))
-            return player.pos + balltogoalnormal * (player.radius + 5)
-
-        elif player.pos[1] > gradient*player.pos[0] + constant2:
-            balltogoalnormal = np.array([balltogoal[1], -balltogoal[0]])
-            balltogoalnormal = balltogoalnormal/(np.linalg.norm(balltogoalnormal))
-            return player.pos - balltogoalnormal * (player.radius + 5)
-            
-    else:
-        if player.pos[1] < b.pos[1] - b.radius - player.radius or player.pos[1] > b.pos[1] + b.radius + player.radius or player.pos[0] > b.pos[0] + 30:
-            return player.pos + direction * np.array([2*player.radius, 0])
-        else:
-            if player.pos[1] <= goalcentre[1]:
-                return player.pos + np.array([0, 2*playerradius])
-            else:
-                return player.pos - np.array([0, 2*playerradius])
-                
-
-                
-def shoot(colour, player, opponents):
-    player.kicking = True
-    return b.pos
-        
-
-def shootnow(colour, player, opponents):
-    if colour == 'red':
-        goalcentre = np.array([pitchcornerx, goalcornery + goalsize//2])
-    if colour == 'pink':
-        goalcentre = np.array([windowwidth - pitchcornerx, goalcornery + goalsize//2])
-    playertoball = b.pos - player.pos
-    gradient = playertoball[1]/playertoball[0]
-    
-    constant0 = b.pos[1] - gradient * b.pos[0]
-    constant1 = goalcentre[1] - b.radius - gradient * goalcentre[0]
-    constant2 = goalcentre[1] + b.radius - gradient * goalcentre[0]
-    
-    clearshot = True
-    for opponent in opponents:
-        if opponent.pos[1] >= gradient*opponent.pos[0] + constant1 and opponent.pos[1] <= gradient*opponent.pos[0] + constant2:
-            clearshot = False
-    
-    ontarget = False
-    
-    if colour == 'pink':
-        xcoord = windowwidth-pitchcornerx
-    if colour == 'red':
-        xcoord = pitchcornerx
-        
-    if gradient * xcoord + constant0 < goalcornery + goalsize and gradient * xcoord + constant0 > goalcornery:
-        ontarget = True
-    
-    if ontarget == True and clearshot == True:
-        SHOOT = True
-    else:
-        SHOOT = False
-        
-        
-    return SHOOT
-
-def dribble(player, colour):
-    
-    getaboveit = False
-    getbelowit = False
-    positiontoshoot = False
-    
-    if colour == 'red':
-        xcoord = pitchcornerx
-        bound = 5/8 * windowwidth
-    else:
-        xcoord = windowwidth - pitchcornerx
-        bound = 3/8 * windowwidth
-        
-    if colour == 'red' and b.pos[0] > bound and b.pos[1] < goalcornery:
-        getaboveit = True
-    elif colour == 'red' and b.pos[0] > bound and b.pos[1] > goalcornery + goalsize:
-        getbelowit = True
-    elif colour == 'red' and b.pos[0]> bound:
-        positiontoshoot = True
-        
-    if colour == 'pink' and b.pos[0] < bound and b.pos[1] < goalcornery:
-        getaboveit = True
-    elif colour == 'pink' and b.pos[0] < bound and b.pos[1] > goalcornery + goalsize:
-        getbelowit = True
-    elif colour == 'pink' and b.pos[0]< bound:
-        positiontoshoot = True
-        
-    if getbelowit == True:
-        return b.pos + np.array([0, player.radius])
-    elif getaboveit == True:
-        return b.pos - np.array([0, player.radius])
-    elif positiontoshoot == True:
-        if colour == 'red':
-            return b.pos -np.array([player.radius, 0])*5/6
-        else:
-            return b.pos +np.array([player.radius, 0])*5/6
-    else:
-        goalcentre = np.array([xcoord, goalcornery + goalsize//2])
-        goaltoball = goalcentre - b.pos
-        goaltoball = goaltoball/np.linalg.norm(goaltoball)
-        return b.pos + goaltoball * (player.radius / 2)
-
-def getorders(player, colour, opponents):
-        
-    opponentpos = [opponent.pos[0] for opponent in opponents]
-    
-    if colour == 'red':
-        shootat = 'pink'
-        if b.pos[0] < windowwidth / 2 or b.pos[0] < player.pos[0]:
-            defending = True
-        else:
-            defending = False
-        q = max(opponentpos)
-        if q < player.pos[0] and player.pos[0] < b.pos[0] and b.pos[0] < 2*windowwidth/3:
-            send = True
-        else:
-            send = False
-        
-        
-    elif colour == 'pink':
-        shootat = 'red'
-        if b.pos[0] > windowwidth / 2:
-            defending = True
-        else:
-            defending = False
-        
-        q = min(opponentpos)
-        if q >player.pos[0] and player.pos[0] > b.pos[0] and b.pos[0] > 2*windowwidth/3:
-            send = True
-        else:
-            send = False    
-            
-            
-    if defending == True:
-        order = blockgoal(colour, player)
-        
-    elif shootnow('pink', reds[0], opponents) == True:
-        order = shoot(shootat, player, opponents)
-        
-    elif send == True:
-        order = shoot(shootat, player, opponents) #"SEND IT!"
-    
-    else:
-        order = dribble(player, colour)
-        
-    return order
