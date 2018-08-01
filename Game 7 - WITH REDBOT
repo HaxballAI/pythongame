@@ -24,7 +24,7 @@ font = pygame.font.Font(None, 50)
 # this was added because it will end up being added anyways
 # it also allows us to test the robustness of player-player collisions when there are large numbers of players
 redteamsize = 1
-pinkteamsize = 1
+blueteamsize = 1
 
 # defines terminal game parameters
 maxscore = 1
@@ -46,7 +46,7 @@ ballbouncing = 0.5
 
 # parameters for the pitch drawing
 redstart = (200, 200)
-pinkstart = (640, 200)
+bluestart = (640, 200)
 ballstart = (420, 200)
 goalpostradius = 8
 goalpostbouncingquotient = 0.5
@@ -56,8 +56,8 @@ kickingcircleradius = 15
 kickingcirclethickness = 2
 
 # defines colors used in drawing the map
-redcolour = (255, 0, 0)
-pinkcolour = (255, 0, 255)
+redcolour = (229, 110, 86)
+bluecolour = (86, 137, 229)
 ballcolour = (0, 0, 0)
 goallinecolour = (199, 230, 189)
 goalpostcolour = (150, 150, 150)
@@ -319,7 +319,7 @@ def redrawgamewindow():
 
 
     # draws score
-    string = str(redscore) + ":" + str(pinkscore)
+    string = str(redscore) + ":" + str(bluescore)
     text = font.render(string, True, (255, 255, 255))
     win.blit(text, (100, 25))
 
@@ -336,8 +336,8 @@ def redrawgamewindow():
 #        win.blit(text, coord)
 #        global run
 #        run = False
-#    elif pinkscore >= maxscore:
-#        text = font.render("Pink Team Won", True, (255, 255, 255))
+#    elif bluescore >= maxscore:
+#        text = font.render("blue Team Won", True, (255, 255, 255))
 #        coord = text.get_rect(center=(windowwidth // 2, windowheight // 2))
 #        win.blit(text, coord)
 #        global run
@@ -367,7 +367,7 @@ def collision(obj1, obj2):
     obj2tangentvelocity = np.dot(np.array(obj2.velocity), collisiontangent)
 
     obj1.velocity = obj1newnormalvelocity * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
-    obj2.velocity = obj1newnormalvelocity * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
+    obj2.velocity = obj2newnormalvelocity * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
     obj1.pos = centerofmass + ((obj1.radius + obj2.radius) + bouncingq * (obj1.radius + obj2.radius - distance)) * collisionnormal * obj2.mass / (obj1.mass + obj2.mass)
     obj2.pos = centerofmass - ((obj1.radius + obj2.radius) + bouncingq * (obj1.radius + obj2.radius - distance)) * collisionnormal * obj1.mass / (obj1.mass + obj2.mass)
@@ -393,7 +393,7 @@ def collisiongoalpost(obj1, obj2):
     obj1.velocity = - velocityafter * np.array(collisionnormal) + obj1tangentvelocity * np.array(collisiontangent)
     obj2.velocity = velocityafter * np.array(collisionnormal) + obj2tangentvelocity * np.array(collisiontangent)
 
-    obj2.pos = obj2.pos - collisionnormal * (obj1.radius + obj2.radius)
+    obj2.pos = obj1.pos - collisionnormal * (obj1.radius + obj2.radius)
 
 
 # handles kick interaction
@@ -402,19 +402,19 @@ def kick(obj1, ball):
 
 
 # handles goal event
-def goal(ball, redscore, pinkscore, redlastgoal, kickedoff):
-    if ball.pos[0] <= a1:
-        pinkscore += 1
+def goal(ball, redscore, bluescore, redlastgoal, kickedoff):
+    if ball.pos[0] <= pitchcornerx:
+        bluescore += 1
         redlastgoal = False
         kickedoff = False
         resetmap()
 
-    elif ball.pos[0] >= b1 + 5:
+    elif ball.pos[0] >= windowwidth - pitchcornerx:
         redscore += 1
         redlastgoal = True
         kickedoff = False
         resetmap()
-    return [redscore, pinkscore, redlastgoal, kickedoff]
+    return [redscore, bluescore, redlastgoal, kickedoff]
 
 
 # resets the map
@@ -472,30 +472,30 @@ def keepoutofcentre(blocked):
         centreblock.pos[0] = int(centreblock.pos[0])
         centreblock.pos[1] = int(centreblock.pos[1])
 
-        
+
 # -------------------------REDBOT FUNCTIONS------------------
 
 def moveto(pv, player):
     directionvector = (pv[0] - player.pos[0], pv[1] - player.pos[1])
     distance = np.linalg.norm(directionvector)
     if distance > player.radius:
-        
+
         angle = np.angle(directionvector[0] + directionvector[1]*1j)
         if angle >= 7*pi/8 and angle <= pi:
             angle = -2*pi + angle
-        
+
         for i in range(-4, 4):
             if angle >= i*pi/4 - pi/8 and angle < i*pi/4 + pi/8:
                 player.acc = np.array([np.cos(i*pi/4), np.sin(i*pi/4)])
-                
+
 def blockgoal(colour, player):
     if colour == 'red':
         goalcentre = np.array([pitchcornerx, goalcornery + goalsize//2])
-    if colour == 'pink':
+    if colour == 'blue':
         goalcentre = np.array([windowwidth - pitchcornerx, goalcornery + goalsize//2])
     balltogoal = goalcentre - b.pos
     gradient = balltogoal[1]/balltogoal[0]
-    
+
     constant1 = goalcentre[1] - b.radius - gradient * goalcentre[0]
     constant2 = goalcentre[1] + b.radius - gradient * goalcentre[0]
 
@@ -505,14 +505,14 @@ def blockgoal(colour, player):
             behindball = True
         else:
             behindball = False
-    
-    if colour == 'pink':
+
+    if colour == 'blue':
         direction = 1
         if player.pos[0] <= b.pos[0]:
             behindball = False
         else:
             behindball = True
-    
+
     if behindball == True:
         if player.pos[1] >= gradient*player.pos[0] + constant1 and player.pos[1] <= gradient*player.pos[0] + constant2:
             return b.pos
@@ -526,7 +526,7 @@ def blockgoal(colour, player):
             balltogoalnormal = np.array([balltogoal[1], -balltogoal[0]])
             balltogoalnormal = balltogoalnormal/(np.linalg.norm(balltogoalnormal))
             return player.pos - balltogoalnormal * (player.radius + 5)
-            
+
     else:
         if player.pos[1] < b.pos[1] - b.radius - player.radius or player.pos[1] > b.pos[1] + b.radius + player.radius or player.pos[0] > b.pos[0] + 30:
             return player.pos + direction * np.array([2*player.radius, 0])
@@ -535,76 +535,76 @@ def blockgoal(colour, player):
                 return player.pos + np.array([0, 2*playerradius])
             else:
                 return player.pos - np.array([0, 2*playerradius])
-                
 
-                
+
+
 def shoot(colour, player, opponents):
     player.kicking = True
     return b.pos
-        
+
 
 def shootnow(colour, player, opponents):
     if colour == 'red':
         goalcentre = np.array([pitchcornerx, goalcornery + goalsize//2])
-    if colour == 'pink':
+    if colour == 'blue':
         goalcentre = np.array([windowwidth - pitchcornerx, goalcornery + goalsize//2])
     playertoball = b.pos - player.pos
     gradient = playertoball[1]/playertoball[0]
-    
+
     constant0 = b.pos[1] - gradient * b.pos[0]
     constant1 = goalcentre[1] - b.radius - gradient * goalcentre[0]
     constant2 = goalcentre[1] + b.radius - gradient * goalcentre[0]
-    
+
     clearshot = True
     for opponent in opponents:
         if opponent.pos[1] >= gradient*opponent.pos[0] + constant1 and opponent.pos[1] <= gradient*opponent.pos[0] + constant2:
             clearshot = False
-    
+
     ontarget = False
-    
-    if colour == 'pink':
+
+    if colour == 'blue':
         xcoord = windowwidth-pitchcornerx
     if colour == 'red':
         xcoord = pitchcornerx
-        
+
     if gradient * xcoord + constant0 < goalcornery + goalsize and gradient * xcoord + constant0 > goalcornery:
         ontarget = True
-    
+
     if ontarget == True and clearshot == True:
         SHOOT = True
     else:
         SHOOT = False
-        
-        
+
+
     return SHOOT
 
 def dribble(player, colour):
-    
+
     getaboveit = False
     getbelowit = False
     positiontoshoot = False
-    
+
     if colour == 'red':
         xcoord = pitchcornerx
         bound = 5/8 * windowwidth
     else:
         xcoord = windowwidth - pitchcornerx
         bound = 3/8 * windowwidth
-        
+
     if colour == 'red' and b.pos[0] > bound and b.pos[1] < goalcornery:
         getaboveit = True
     elif colour == 'red' and b.pos[0] > bound and b.pos[1] > goalcornery + goalsize:
         getbelowit = True
     elif colour == 'red' and b.pos[0]> bound:
         positiontoshoot = True
-        
-    if colour == 'pink' and b.pos[0] < bound and b.pos[1] < goalcornery:
+
+    if colour == 'blue' and b.pos[0] < bound and b.pos[1] < goalcornery:
         getaboveit = True
-    elif colour == 'pink' and b.pos[0] < bound and b.pos[1] > goalcornery + goalsize:
+    elif colour == 'blue' and b.pos[0] < bound and b.pos[1] > goalcornery + goalsize:
         getbelowit = True
-    elif colour == 'pink' and b.pos[0]< bound:
+    elif colour == 'blue' and b.pos[0]< bound:
         positiontoshoot = True
-        
+
     if getbelowit == True:
         return b.pos + np.array([0, player.radius])
     elif getaboveit == True:
@@ -621,11 +621,11 @@ def dribble(player, colour):
         return b.pos + goaltoball * (player.radius / 2)
 
 def getorders(player, colour, opponents):
-        
+
     opponentpos = [opponent.pos[0] for opponent in opponents]
-    
+
     if colour == 'red':
-        shootat = 'pink'
+        shootat = 'blue'
         if b.pos[0] < windowwidth / 2 or b.pos[0] < player.pos[0]:
             defending = True
         else:
@@ -635,34 +635,34 @@ def getorders(player, colour, opponents):
             send = True
         else:
             send = False
-        
-        
-    elif colour == 'pink':
+
+
+    elif colour == 'blue':
         shootat = 'red'
         if b.pos[0] > windowwidth / 2:
             defending = True
         else:
             defending = False
-        
+
         q = min(opponentpos)
         if q >player.pos[0] and player.pos[0] > b.pos[0] and b.pos[0] > 2*windowwidth/3:
             send = True
         else:
-            send = False    
-            
-            
+            send = False
+
+
     if defending == True:
         order = blockgoal(colour, player)
-        
-    elif shootnow('pink', reds[0], opponents) == True:
+
+    elif shootnow('blue', reds[0], opponents) == True:
         order = shoot(shootat, player, opponents)
-        
+
     elif send == True:
         order = shoot(shootat, player, opponents) #"SEND IT!"
-    
+
     else:
         order = dribble(player, colour)
-        
+
     return order
 
 # -----------------------------------------------------------
@@ -672,42 +672,42 @@ def getorders(player, colour, opponents):
 
 # initialises players
 reds = []
-pinks = []
+blues = []
 
 # for now, players are distributed evenly along the starting point as a proof of concept
 for i in range(redteamsize):
     reds.append(
-        player(redstart[0] + 50 * np.random.uniform(-1, 1), redstart[1] + 50 * np.random.uniform(-1, 1), redcolour))
+        player(redstart[0] + 0 * np.random.uniform(-1, 1), redstart[1] + 0 * np.random.uniform(-1, 1), redcolour))
 
-for i in range(pinkteamsize):
-    pinks.append(
-        player(pinkstart[0] + 50 * np.random.uniform(-1, 1), pinkstart[1] + 50 * np.random.uniform(-1, 1), pinkcolour))
+for i in range(blueteamsize):
+    blues.append(
+        player(bluestart[0] + 0 * np.random.uniform(-1, 1), bluestart[1] + 0 * np.random.uniform(-1, 1), bluecolour))
 
 b = ball(ballstart[0], ballstart[1])
 
 # initialises goalposts
 redgoalpost1 = goalpost(pitchcornerx, goalcornery)
 redgoalpost2 = goalpost(pitchcornerx, goalcornery + goalsize)
-pinkgoalpost1 = goalpost(windowwidth - pitchcornerx, goalcornery)
-pinkgoalpost2 = goalpost(windowwidth - pitchcornerx, goalcornery + goalsize)
+bluegoalpost1 = goalpost(windowwidth - pitchcornerx, goalcornery)
+bluegoalpost2 = goalpost(windowwidth - pitchcornerx, goalcornery + goalsize)
 
 # initialises object blocking centre
 centreblock = centrecircleblock()
 
 # collects objects into useful groups
-players = reds + pinks
+players = reds + blues
 movingobjects = players + [b]
-goalposts = [redgoalpost1, redgoalpost2, pinkgoalpost1, pinkgoalpost2]
+goalposts = [redgoalpost1, redgoalpost2, bluegoalpost1, bluegoalpost2]
 
 # initialises scores
-pinkscore = 0
+bluescore = 0
 redscore = 0
 
 # for kickoff
 kickedoff = False
 redlastgoal = False
 
-ORDER = ORDER = getorders(reds[0], 'red', pinks)
+ORDER = ORDER = getorders(reds[0], 'red', blues)
 
 ticks = 0
 
@@ -716,7 +716,7 @@ while run:
     timeelapsed += clock.tick(60)
 
     ticks += 1
-    
+
     # blocks the player that isn't kicking off from entering the circle/ other half
     if alternatingkickoffs == True:
         if kickedoff == False:
@@ -729,13 +729,13 @@ while run:
 
                     keepoutofcentre(reds[i])
             else:
-                for i in range(len(pinks)):
+                for i in range(len(blues)):
 
-                    if pinks[i].pos[0] <= windowwidth // 2 + playerradius:
-                        pinks[i].velocity[0] = 0
-                        pinks[i].pos[0] = windowwidth // 2 + playerradius
+                    if blues[i].pos[0] <= windowwidth // 2 + playerradius:
+                        blues[i].velocity[0] = 0
+                        blues[i].pos[0] = windowwidth // 2 + playerradius
 
-                    keepoutofcentre(pinks[i])
+                    keepoutofcentre(blues[i])
 
     # handles the key events
     keys = pygame.key.get_pressed()
@@ -772,47 +772,47 @@ while run:
         else:
             reds[0].kicking = False
             reds[0].newkick = True
-       
+
 
     if redbot:
         if ticks == 1:
-            ORDER = getorders(reds[0], 'red', pinks)
+            ORDER = getorders(reds[0], 'red', blues)
         moveto(ORDER, reds[0])
-            
-        
-    # pink movement controls
-    if len(pinks) > 0:
+
+
+    # blue movement controls
+    if len(blues) > 0:
         if keys[pygame.K_LEFT]:
             if keys[pygame.K_UP]:
-                pinks[0].acc = np.array([- 1.0, - 1.0]) / (2) ** (1 / 2)
+                blues[0].acc = np.array([- 1.0, - 1.0]) / (2) ** (1 / 2)
             elif keys[pygame.K_DOWN]:
-                pinks[0].acc = np.array([- 1.0, 1.0]) / (2) ** (1 / 2)
+                blues[0].acc = np.array([- 1.0, 1.0]) / (2) ** (1 / 2)
             else:
-                pinks[0].acc = np.array([- 1.0, 0.0])
+                blues[0].acc = np.array([- 1.0, 0.0])
 
         elif keys[pygame.K_RIGHT]:
             if keys[pygame.K_UP]:
-                pinks[0].acc = np.array([1.0, - 1.0]) / (2) ** (1 / 2)
+                blues[0].acc = np.array([1.0, - 1.0]) / (2) ** (1 / 2)
             elif keys[pygame.K_DOWN]:
-                pinks[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
+                blues[0].acc = np.array([1.0, 1.0]) / (2) ** (1 / 2)
             else:
-                pinks[0].acc = np.array([1.0, 0.0])
+                blues[0].acc = np.array([1.0, 0.0])
 
         elif keys[pygame.K_UP]:
-            pinks[0].acc = np.array([0.0, -1.0])
+            blues[0].acc = np.array([0.0, -1.0])
 
         elif keys[pygame.K_DOWN]:
-            pinks[0].acc = np.array([0.0, 1.0])
+            blues[0].acc = np.array([0.0, 1.0])
 
         else:
-            pinks[0].acc = np.array([0.0, 0.0])
+            blues[0].acc = np.array([0.0, 0.0])
 
         if keys[pygame.K_RCTRL]:
-            pinks[0].kicking = True
+            blues[0].kicking = True
         else:
-            pinks[0].kicking = False
-            pinks[0].newkick = True
-            
+            blues[0].kicking = False
+            blues[0].newkick = True
+
 
     # moves the players
     for player in players:
@@ -869,12 +869,12 @@ while run:
 
 
     if ticks == 5:
-        ticks = 0 
-                
+        ticks = 0
+
     # updates score
-    G = goal(b, redscore, pinkscore, redlastgoal, kickedoff)
+    G = goal(b, redscore, bluescore, redlastgoal, kickedoff)
     redscore = G[0]
-    pinkscore = G[1]
+    bluescore = G[1]
     redlastgoal = G[2]
     kickedoff = G[3]
     redrawgamewindow()
@@ -882,5 +882,3 @@ while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
-            
-
