@@ -1,3 +1,5 @@
+#Don't get your hopes too far up, it doesn't actually work (help pls)
+
 import pygame
 import tensorflow as tf
 
