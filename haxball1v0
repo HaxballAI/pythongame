@@ -1,8 +1,6 @@
 #Don't get your hopes too far up, it doesn't actually work (help pls)
 
 import pygame
-import tensorflow as tf
-
 # adds antialiasing to game, makes it look SmoothAndSilky(TM)
 from pygame import gfxdraw
 import numpy as np
