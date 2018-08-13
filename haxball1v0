@@ -78,13 +78,14 @@ textcolour = (0, 0, 0)
 textposition = (215, 25)
 
 #WRITING NETWORK HERE
-dropout = 0.3
-psi = 1.0
+dropout = 0.1
+psi = 0.1
 
 #rewards:
 touching_ball = 100
 scoring = 10000
 own_goal = -10000
+nothing_happens = -0.1
 
 def relu(x):
     for i in range(len(x)):
@@ -146,7 +147,7 @@ class neural_network(object):
         return l4
 
     def nn_learn(self):
-        rewardsthatmatter = self.rewards[-1: -1000]
+        rewardsthatmatter = self.rewards[-100: -1]
         reward = sum(rewardsthatmatter)
         for i in range(min(len(self.outputs) - 1, 1000)):
             adjustedreward = reward * 0.999 ** i
@@ -154,26 +155,26 @@ class neural_network(object):
             move = self.moves[-i-1][0]
             kicking = self.moves[-i-1][1]
 
-            array = np.array([0,0,0,0,0,0,0,0,0, 0])
-            array[move] =  1
-            array[9] = kicking
+        array = np.array([0,0,0,0,0,0,0,0,0, 0])
+        array[move] =  1
+        array[9] = kicking
 
-            toutput = output + array * adjustedreward
-            error = ( output - toutput ) ** 2
+        toutput = output + array * adjustedreward
+        error = ( output - toutput ) ** 2
 
-            deltafinal =  2 * (output - toutput)
+        deltafinal =  2 * (output - toutput)
 
-            delta3 = (np.ones(len(self.prevnetworkfire[3])) - self.prevnetworkfire[3]**2)* np.matmul(self.weights_fourth_layer.T, deltafinal)
-            delta2 = (np.ones(len(self.prevnetworkfire[2])) - self.prevnetworkfire[2]**2)* np.matmul(self.weights_third_layer.T, delta3)
-            delta1 = (np.ones(len(self.prevnetworkfire[1])) - self.prevnetworkfire[1]**2)* np.matmul(self.weights_second_layer.T, delta2)
-            delta0 = (np.ones(len(self.prevnetworkfire[0])) - self.prevnetworkfire[0]**2)* np.matmul(self.weights_first_layer.T, delta1)
+        delta3 = (np.ones(len(self.prevnetworkfire[3])) - self.prevnetworkfire[3]**2)* np.matmul(self.weights_fourth_layer.T, deltafinal)
+        delta2 = (np.ones(len(self.prevnetworkfire[2])) - self.prevnetworkfire[2]**2)* np.matmul(self.weights_third_layer.T, delta3)
+        delta1 = (np.ones(len(self.prevnetworkfire[1])) - self.prevnetworkfire[1]**2)* np.matmul(self.weights_second_layer.T, delta2)
+        delta0 = (np.ones(len(self.prevnetworkfire[0])) - self.prevnetworkfire[0]**2)* np.matmul(self.weights_first_layer.T, delta1)
 
-            self.weights_first_layer = - self.weights_first_layer - psi * np.matmul(np.array([list(self.prevnetworkfire[0])]).T, np.array([list(delta1)])).T
-            self.weights_second_layer = self.weights_second_layer - psi * np.matmul(np.array([list(self.prevnetworkfire[1])]).T, np.array([list(delta2)])).T
-            self.weights_third_layer = self.weights_third_layer - psi * np.matmul(np.array([list(self.prevnetworkfire[2])]).T, np.array([list(delta3)])).T
-            self.weights_fourth_layer = self.weights_fourth_layer - psi * np.matmul(np.array([list(self.prevnetworkfire[3])]).T, np.array([list(deltafinal)])).T
+        self.weights_first_layer = - self.weights_first_layer - psi * np.matmul(np.array([list(self.prevnetworkfire[0])]).T, np.array([list(delta1)])).T
+        self.weights_second_layer = self.weights_second_layer - psi * np.matmul(np.array([list(self.prevnetworkfire[1])]).T, np.array([list(delta2)])).T
+        self.weights_third_layer = self.weights_third_layer - psi * np.matmul(np.array([list(self.prevnetworkfire[2])]).T, np.array([list(delta3)])).T
+        self.weights_fourth_layer = self.weights_fourth_layer - psi * np.matmul(np.array([list(self.prevnetworkfire[3])]).T, np.array([list(deltafinal)])).T
 
-
+        #print('REWARD: ', reward)
 
 
 
@@ -626,11 +627,13 @@ currentballpos = b.pos
 prevballpos = b.pos
 network = neural_network(dropout)
 q = 0
+tickssincelastball = 0
 
 
 run = True
 while run:
-    timeelapsed += clock.tick(10000)
+    timeelapsed += clock.tick(1000000)
+    tickssincelastball += 1
     decision += 1
     reward = 0
     
@@ -780,6 +783,7 @@ while run:
     # handles kicks
     for player in players:
         if player.dist(b) <= playerradius + ballradius + 4:
+            tickssincelastball = 0
             reward += touching_ball
 
             kickedoff = True
@@ -799,6 +803,9 @@ while run:
     kickedoff = G[3]
     reward = G[4]
     redrawgamewindow()
+
+    if reward == 0:
+        reward = -player.dist(b)/100000
 
 
     #print('REWARD: ', reward, ' MOVE: ', redoutput)
@@ -827,5 +834,3 @@ while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
-
-print(network.moves)
