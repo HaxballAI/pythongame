@@ -21,7 +21,7 @@ font = pygame.font.Font(None, 50)
 rednetwork = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 40]
 bluenetwork = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 40]
 redactivation = np.zeros(1600)
-blueactivaiton = np.zeros(1600)
+blueactivation = np.zeros(1600)
 
 
 
