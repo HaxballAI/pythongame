@@ -700,17 +700,32 @@ while run:
         resetmap()
 
     redrawgamewindow()
-    if frames > 3600 and (redscore > 0  or bluescore > 0):
+    if frames > 3600 and bluescore == 0 and redscore == 0:
         resetmap()
-        rednetwork = [(rednetwork[0] + np.random.randn(1600,7) / np.sqrt(70000))* np.sqrt(100 / 101) , (rednetwork[1] + np.random.randn(1600,1600) / 4000)* np.sqrt(100 / 101), (rednetwork[2] + np.random.randn(18,1600) / 4000)* np.sqrt(100 / 101)]
-        bluenetwork = [(bluenetwork[0] + np.random.randn(1600,7) / np.sqrt(70000))* np.sqrt(100 / 101) , (bluenetwork[1] + np.random.randn(1600,1600) / 4000)* np.sqrt(100 / 101), (bluenetwork[2] + np.random.randn(18,1600) / 4000)* np.sqrt(100 / 101)]
+        rednetwork = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 40]
+        bluenetwork = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 40]
         redactivation = np.zeros(1600)
         blueactivaiton = np.zeros(1600)
         frames = 0
         timeelapsed = 0
-    elif frames > 3600:
+    if frames > 3600 and redscore == 0:
+        resetmap()
         rednetwork = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 40]
+        redactivation = np.zeros(1600)
+        blueactivaiton = np.zeros(1600)
+        frames = 0
+        timeelapsed = 0
+    if frames > 3600 and bluescore == 0:
+        resetmap()
         bluenetwork = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 40]
+        redactivation = np.zeros(1600)
+        blueactivaiton = np.zeros(1600)
+        frames = 0
+        timeelapsed = 0
+    if frames > 3600:
+        resetmap()
+        rednetwork = [(rednetwork[0] + np.random.randn(1600,7) / np.sqrt(70000))* np.sqrt(100 / 101) , (rednetwork[1] + np.random.randn(1600,1600) / 4000)* np.sqrt(100 / 101), (rednetwork[2] + np.random.randn(18,1600) / 4000)* np.sqrt(100 / 101)]
+        bluenetwork = [(bluenetwork[0] + np.random.randn(1600,7) / np.sqrt(70000))* np.sqrt(100 / 101) , (bluenetwork[1] + np.random.randn(1600,1600) / 4000)* np.sqrt(100 / 101), (bluenetwork[2] + np.random.randn(18,1600) / 4000)* np.sqrt(100 / 101)]
         redactivation = np.zeros(1600)
         blueactivaiton = np.zeros(1600)
         frames = 0
