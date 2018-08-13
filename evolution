@@ -538,7 +538,7 @@ while run:
     redprobabilities = softmax(redoutputsignal)
     redchoice = np.random.choice(range(18),1,False, redprobabilities)
 
-    blueinputsignal = (np.dot(rednetwork[0], redinput) + np.dot(rednetwork[1], redactivation)) / np.sqrt(2)
+    blueinputsignal = (np.dot(bluenetwork[0], blueinput) + np.dot(bluenetwork[1], blueactivation)) / np.sqrt(2)
     blueactivation = np.tanh(blueinputsignal)
     blueoutputsignal = np.dot(bluenetwork[2],blueactivation)
     blueprobabilities = softmax(blueoutputsignal)
