@@ -21,7 +21,7 @@ clock = pygame.time.Clock()
 timeelapsed = 0
 font = pygame.font.Font(None, 50)
 
-network = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 20]
+network = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 40]
 redactivation = np.zeros(1600)
 blueactivation = np.zeros(1600)
 
@@ -85,8 +85,9 @@ textcolour = (0, 0, 0)
 textposition = (215, 25)
 
 #network properties
-training_ai_games = 3
+training_ai_games = 1
 redbot = True
+noscore = True
 
 # defines relevant pitch coordinates for calculation
 pitchcornerx = int(np.floor((windowwidth - pitchwidth) / 2))
@@ -524,7 +525,7 @@ def eval_v2 (red_position, blue_position, ball_position):
         return 100 * possession_val/(redgoaldist**goaldistance_weight);
 
 #def eval_v3 (red_position, red_velocity, blue_position, blue_velocity, ball_position, ball_velocity):
-    
+
 
 def acceleration (input):
     acc = np.array([0.0, 0.0])
@@ -822,6 +823,31 @@ def getorders(player, colour, opponents):
 
 # -----------------------------------------------------------
 
+def updateweights(redupdatedwinprediction, blueupdatedwinprediction, network, gamedata):
+    i = 1
+    while i < 1000 and i < frames:
+        bluederivativeoferrorwithrespecttosignal = 2 *(np.reciprocal((np.exp(-gamedata[-i][6][gamedata[-i][4]]) + 1)) - blueupdatedwinprediction)
+        redderivativeoferrorwithrespecttosignal = 2 * (np.reciprocal((np.exp(-gamedata[-i][5][gamedata[-i][3]]) + 1)) - redupdatedwinprediction)
+        bluedelta2 = np.zeros(18)
+        reddelta2 = np.zeros(18)
+        bluedelta2[gamedata[-i][4]] = bluederivativeoferrorwithrespecttosignal
+        reddelta2[gamedata[-i][3]] = redderivativeoferrorwithrespecttosignal
+        w2change = np.outer(bluedelta2, np.tanh(gamedata[-1][2])) + np.outer(reddelta2, np.tanh(gamedata[-1][1]))
+        bluedelta0 = np.multiply(np.dot(np.transpose(network[2]), bluedelta2), np.reciprocal(np.cosh(gamedata[-i][1]) ** 2))
+        reddelta0 = np.multiply(np.dot(np.transpose(network[2]), reddelta2), np.reciprocal(np.cosh(gamedata[-i][1]) ** 2))
+        blueinput = np.array([1 - 2 * redlastgoal, (windowwidth - gamedata[-i][1][2] - 15) / (windowwidth - 30), (gamedata[-i][1][3] - 15) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][0]) / (windowwidth - 30), (gamedata[-i][1][3] - gamedata[-i][1][1]) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][4]) / (windowwidth - 25), (gamedata[-i][1][3] - gamedata[-i][1][5]) / (windowheight - 25)])
+        redinput = np.array([redlastgoal * 2 - 1, (gamedata[-i][1][0] - 15) / (windowwidth - 30), (gamedata[-i][1][1] - 15) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][0]) / (windowwidth - 30), (gamedata[-i][1][3] - gamedata[-i][1][1]) / (windowheight - 30), (gamedata[-i][1][4] - gamedata[-i][1][0]) / (windowwidth - 25), (gamedata[-i][1][5] - gamedata[-i][1][1]) / (windowheight - 25)])
+        w0change = np.outer(bluedelta0, blueinput) + np.outer(reddelta0, redinput)
+        w1change = np.outer(bluedelta0, logistic.cdf(2 * gamedata[-i - 1][2])) + np.outer(reddelta0, logistic.cdf(2 * gamedata[-i - 1][1]))
+        #print(redupdatedwinprediction * np.log(redupdatedwinprediction) + (1 - redupdatedwinprediction) * np.log(redupdatedwinprediciton) - redupdatedwinprediction * np.log(logistic.cdf(gamedata[-i][5][gamedata[-i][3]])) - (1 - redupdatedwinprediction ) * np.log(logistic.cdf(1 - gamedata[-i][5][gamedata[-i][3]])) + blueupdatedwinprediction * np.log(blueupdatedwinprediction) + (1 - blueupdatedwinprediction) * np.log(blueupdatedwinprediciton) - blueupdatedwinprediction * np.log(logistic.cdf(gamedata[-i][6][gamedata[-i][4]])) - (1 - blueupdatedwinprediction ) * np.log(logistic.cdf((1 - gamedata[-i][6][gamedata[-i][4]]))))
+        network = np.array([network[0] - 0.1/frames * w0change, network[1] - 0.1/frames * w1change, network[2] - 0.1/frames * w2change])
+        bluenewsignal = np.dot(network[2], np.tanh(np.dot(network[1], np.tanh(gamedata[-i - 1][2])) + np.dot(network[0], blueinput)))
+        rednewsignal = np.dot(network[2], np.tanh(np.dot(network[1], np.tanh(gamedata[-i - 1][1])) + np.dot(network[0], blueinput)))
+        blueupdatedwinprediction = np.dot(logistic.cdf(2 * bluenewsignal), softmax(bluenewsignal))
+        redupdatedwinprediction = np.dot(logistic.cdf(2 * rednewsignal), softmax(rednewsignal))
+        i += 1
+    return network
+
 #--------------------------------------------------------------------------------------------
 
 # initialises players
@@ -888,7 +914,7 @@ while run:
     redactivation = np.tanh(redinputsignal)
     redoutputsignal = np.dot(network[2], redactivation)
     redprobabilities = softmax(redoutputsignal)
-    redwinchances = logistic.cdf(redoutputsignal)
+    redwinchances = logistic.cdf(2 * redoutputsignal)
     redwinprediction = np.dot(redprobabilities, redwinchances)
     redchoice = np.random.choice(range(18), 1,False, redprobabilities)
     #rederror = redwinprediction * np.log(gamedata[-1][-2]) + (1 - redwinprediction) * np.log(1 - oldredwinpred)
@@ -899,7 +925,7 @@ while run:
     blueactivation = np.tanh(blueinputsignal)
     blueoutputsignal = np.dot(network[2], blueactivation)
     blueprobabilities = softmax(blueoutputsignal)
-    bluewinchances = logistic.cdf(blueoutputsignal)
+    bluewinchances = logistic.cdf(2 * blueoutputsignal)
     bluewinprediction = np.dot(blueprobabilities, bluewinchances)
     bluechoice = np.random.choice(range(18),1,False, blueprobabilities)
     #print([bluewinchances[bluechoice],redwinchances[redchoice]])
@@ -925,8 +951,8 @@ while run:
 
     # handles the key events
     keys = pygame.key.get_pressed()
-    
-    if traininggames > training_ai_games:
+
+    if noscore == False:
         # red movement controls
         if keys[pygame.K_a] or 0 <= redchoice[0] <= 5:
             if keys[pygame.K_w] or 4 <= redchoice[0] <= 5:
@@ -992,7 +1018,7 @@ while run:
             blues[0].newkick = True
 
     else:
-        
+
         if redbot:
             if ticks == 1:
                 ORDER = getorders(reds[0], 'red', blues)
@@ -1014,7 +1040,7 @@ while run:
                 redchoice = 10
             elif all(reds[0].acc == np.array([1.0, - 1.0]) / (2) ** (1 / 2)):
                 redchoice = 8
-    
+
             if reds[0].kicking == True:
                 pass
             else:
@@ -1022,7 +1048,7 @@ while run:
 
         if (ticks == 1):
             currentmove = move()
-        
+
 
         # blue movement controls
         if (currentmove == 0):
@@ -1058,10 +1084,10 @@ while run:
         else:
             blues[0].kicking = False
             blues[0].newkick = True
-        
 
 
-            
+
+
     # moves the players
     for player in players:
         if player.kicking == True and player.newkick == True:
@@ -1126,31 +1152,10 @@ while run:
         kickedoff = False
         blueupdatedwinprediction = 1
         redupdatedwinprediction = 0
-
-        i = 1
-        while i < 200:
-            bluederivativeoferrorwithrespecttosignal = np.reciprocal((np.exp(-gamedata[-i][6][gamedata[-i][4]]) + 1)) - blueupdatedwinprediction
-            redderivativeoferrorwithrespecttosignal = np.reciprocal((np.exp(-gamedata[-i][5][gamedata[-i][3]]) + 1)) - redupdatedwinprediction
-            bluedelta2 = np.zeros(18)
-            reddelta2 = np.zeros(18)
-            bluedelta2[gamedata[-i][4]] = bluederivativeoferrorwithrespecttosignal
-            reddelta2[gamedata[-i][3]] = redderivativeoferrorwithrespecttosignal
-            w2change = np.outer(bluedelta2, np.tanh(gamedata[-1][2])) + np.outer(reddelta2, np.tanh(gamedata[-1][1]))
-            bluedelta0 = np.multiply(np.dot(np.transpose(network[2]), bluedelta2), np.reciprocal(np.cosh(gamedata[-i][1]) ** 2))
-            reddelta0 = np.multiply(np.dot(np.transpose(network[2]), reddelta2), np.reciprocal(np.cosh(gamedata[-i][1]) ** 2))
-            blueinput = np.array([1 - 2 * redlastgoal, (windowwidth - gamedata[-i][1][2] - 15) / (windowwidth - 30), (gamedata[-i][1][3] - 15) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][0]) / (windowwidth - 30), (gamedata[-i][1][3] - gamedata[-i][1][1]) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][4]) / (windowwidth - 25), (gamedata[-i][1][3] - gamedata[-i][1][5]) / (windowheight - 25)])
-            redinput = np.array([redlastgoal * 2 - 1, (gamedata[-i][1][0] - 15) / (windowwidth - 30), (gamedata[-i][1][1] - 15) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][0]) / (windowwidth - 30), (gamedata[-i][1][3] - gamedata[-i][1][1]) / (windowheight - 30), (gamedata[-i][1][4] - gamedata[-i][1][0]) / (windowwidth - 25), (gamedata[-i][1][5] - gamedata[-i][1][1]) / (windowheight - 25)])
-            w0change = np.outer(bluedelta0, blueinput) + np.outer(reddelta0, redinput)
-            w1change = np.outer(bluedelta0, logistic.cdf(gamedata[-i - 1][2])) + np.outer(reddelta0, logistic.cdf(gamedata[-i - 1][1]))
-            #print(redupdatedwinprediction * np.log(redupdatedwinprediction) + (1 - redupdatedwinprediction) * np.log(redupdatedwinprediciton) - redupdatedwinprediction * np.log(logistic.cdf(gamedata[-i][5][gamedata[-i][3]])) - (1 - redupdatedwinprediction ) * np.log(logistic.cdf(1 - gamedata[-i][5][gamedata[-i][3]])) + blueupdatedwinprediction * np.log(blueupdatedwinprediction) + (1 - blueupdatedwinprediction) * np.log(blueupdatedwinprediciton) - blueupdatedwinprediction * np.log(logistic.cdf(gamedata[-i][6][gamedata[-i][4]])) - (1 - blueupdatedwinprediction ) * np.log(logistic.cdf((1 - gamedata[-i][6][gamedata[-i][4]]))))
-            network = np.array([network[0] - 3/frames * w0change, network[1] - 3/frames * w1change, network[2] - 3/frames * w2change])
-            bluenewsignal = np.dot(network[2], np.tanh(np.dot(network[1], np.tanh(gamedata[-i - 1][2])) + np.dot(network[0], blueinput)))
-            rednewsignal = np.dot(network[2], np.tanh(np.dot(network[1], np.tanh(gamedata[-i - 1][1])) + np.dot(network[0], blueinput)))
-            blueupdatedwinprediction = np.dot(logistic.cdf(bluenewsignal), softmax(bluenewsignal))
-            redupdatedwinprediction = np.dot(logistic.cdf(rednewsignal), softmax(rednewsignal))
-            i += 1
+        network = updateweights(redupdatedwinprediction, blueupdatedwinprediction, network, gamedata)
         frames = 0
         gamedata = []
+        noscore = False
         resetmap()
     elif b.pos[0] >= windowwidth - pitchcornerx:
         redscore += 1
@@ -1159,68 +1164,27 @@ while run:
         kickedoff = False
         blueupdatedwinprediction = 0
         redupdatedwinprediction = 1
-
-        i = 1
-        while i < 200:
-            bluederivativeoferrorwithrespecttosignal = np.reciprocal((np.exp(-gamedata[-i][6][gamedata[-i][4]]) + 1)) - blueupdatedwinprediction
-            redderivativeoferrorwithrespecttosignal = np.reciprocal((np.exp(-gamedata[-i][5][gamedata[-i][3]]) + 1)) - redupdatedwinprediction
-            bluedelta2 = np.zeros(18)
-            reddelta2 = np.zeros(18)
-            bluedelta2[gamedata[-i][4]] = bluederivativeoferrorwithrespecttosignal
-            reddelta2[gamedata[-i][3]] = redderivativeoferrorwithrespecttosignal
-            w2change = np.outer(bluedelta2, np.tanh(gamedata[-1][2])) + np.outer(reddelta2, np.tanh(gamedata[-1][1]))
-            bluedelta0 = np.multiply(np.dot(np.transpose(network[2]), bluedelta2), np.reciprocal(np.cosh(gamedata[-i][1]) ** 2))
-            reddelta0 = np.multiply(np.dot(np.transpose(network[2]), reddelta2), np.reciprocal(np.cosh(gamedata[-i][1]) ** 2))
-            blueinput = np.array([1 - 2 * redlastgoal, (windowwidth - gamedata[-i][1][2] - 15) / (windowwidth - 30), (gamedata[-i][1][3] - 15) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][0]) / (windowwidth - 30), (gamedata[-i][1][3] - gamedata[-i][1][1]) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][4]) / (windowwidth - 25), (gamedata[-i][1][3] - gamedata[-i][1][5]) / (windowheight - 25)])
-            redinput = np.array([redlastgoal * 2 - 1, (gamedata[-i][1][0] - 15) / (windowwidth - 30), (gamedata[-i][1][1] - 15) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][0]) / (windowwidth - 30), (gamedata[-i][1][3] - gamedata[-i][1][1]) / (windowheight - 30), (gamedata[-i][1][4] - gamedata[-i][1][0]) / (windowwidth - 25), (gamedata[-i][1][5] - gamedata[-i][1][1]) / (windowheight - 25)])
-            w0change = np.outer(bluedelta0, blueinput) + np.outer(reddelta0, redinput)
-            w1change = np.outer(bluedelta0, logistic.cdf(gamedata[-i - 1][2])) + np.outer(reddelta0, logistic.cdf(gamedata[-i - 1][1]))
-            #print(redupdatedwinprediction * np.log(redupdatedwinprediction) + (1 - redupdatedwinprediction) * np.log(redupdatedwinprediciton) - redupdatedwinprediction * np.log(logistic.cdf(gamedata[-i][5][gamedata[-i][3]])) - (1 - redupdatedwinprediction ) * np.log(logistic.cdf(1 - gamedata[-i][5][gamedata[-i][3]])) + blueupdatedwinprediction * np.log(blueupdatedwinprediction) + (1 - blueupdatedwinprediction) * np.log(blueupdatedwinprediciton) - blueupdatedwinprediction * np.log(logistic.cdf(gamedata[-i][6][gamedata[-i][4]])) - (1 - blueupdatedwinprediction ) * np.log(logistic.cdf((1 - gamedata[-i][6][gamedata[-i][4]]))))
-            network = np.array([network[0] - 3/frames * w0change, network[1] - 3/frames * w1change, network[2] - 3/frames * w2change])
-            bluenewsignal = np.dot(network[2], np.tanh(np.dot(network[1], np.tanh(gamedata[-i - 1][2])) + np.dot(network[0], blueinput)))
-            rednewsignal = np.dot(network[2], np.tanh(np.dot(network[1], np.tanh(gamedata[-i - 1][1])) + np.dot(network[0], blueinput)))
-            blueupdatedwinprediction = np.dot(logistic.cdf(bluenewsignal), softmax(bluenewsignal))
-            redupdatedwinprediction = np.dot(logistic.cdf(rednewsignal), softmax(rednewsignal))
-            i += 1
+        network = updateweights(redupdatedwinprediction, blueupdatedwinprediction, network, gamedata)
         frames = 0
         gamedata = []
+        noscore = False
         resetmap()
     elif frames > 3600:
         kickedoff = False
         traininggames += 1
         if redscore < 0 and bluescore < 0:
-            network = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 20]
+            network = [np.random.randn(1600,7) / np.sqrt(7) , np.random.randn(1600,1600) / 40, np.random.randn(18,1600) / 40]
             frames = 0
             gamedata = []
+            noscore = True
             resetmap()
         else:
             blueupdatedwinprediction = 0
             redupdatedwinprediction = 0
-
-            i = 1
-            while i < 200:
-                bluederivativeoferrorwithrespecttosignal = np.reciprocal((np.exp(-gamedata[-i][6][gamedata[-i][4]]) + 1)) - blueupdatedwinprediction
-                redderivativeoferrorwithrespecttosignal = np.reciprocal((np.exp(-gamedata[-i][5][gamedata[-i][3]]) + 1)) - redupdatedwinprediction
-                bluedelta2 = np.zeros(18)
-                reddelta2 = np.zeros(18)
-                bluedelta2[gamedata[-i][4]] = bluederivativeoferrorwithrespecttosignal
-                reddelta2[gamedata[-i][3]] = redderivativeoferrorwithrespecttosignal
-                w2change = np.outer(bluedelta2, np.tanh(gamedata[-1][2])) + np.outer(reddelta2, np.tanh(gamedata[-1][1]))
-                bluedelta0 = np.multiply(np.dot(np.transpose(network[2]), bluedelta2), np.reciprocal(np.cosh(gamedata[-i][1]) ** 2))
-                reddelta0 = np.multiply(np.dot(np.transpose(network[2]), reddelta2), np.reciprocal(np.cosh(gamedata[-i][1]) ** 2))
-                blueinput = np.array([1 - 2 * redlastgoal, (windowwidth - gamedata[-i][1][2] - 15) / (windowwidth - 30), (gamedata[-i][1][3] - 15) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][0]) / (windowwidth - 30), (gamedata[-i][1][3] - gamedata[-i][1][1]) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][4]) / (windowwidth - 25), (gamedata[-i][1][3] - gamedata[-i][1][5]) / (windowheight - 25)])
-                redinput = np.array([redlastgoal * 2 - 1, (gamedata[-i][1][0] - 15) / (windowwidth - 30), (gamedata[-i][1][1] - 15) / (windowheight - 30), (gamedata[-i][1][2] - gamedata[-i][1][0]) / (windowwidth - 30), (gamedata[-i][1][3] - gamedata[-i][1][1]) / (windowheight - 30), (gamedata[-i][1][4] - gamedata[-i][1][0]) / (windowwidth - 25), (gamedata[-i][1][5] - gamedata[-i][1][1]) / (windowheight - 25)])
-                w0change = np.outer(bluedelta0, blueinput) + np.outer(reddelta0, redinput)
-                w1change = np.outer(bluedelta0, logistic.cdf(gamedata[-i - 1][2])) + np.outer(reddelta0, logistic.cdf(gamedata[-i - 1][1]))
-                #print(redupdatedwinprediction * np.log(redupdatedwinprediction) + (1 - redupdatedwinprediction) * np.log(redupdatedwinprediciton) - redupdatedwinprediction * np.log(logistic.cdf(gamedata[-i][5][gamedata[-i][3]])) - (1 - redupdatedwinprediction ) * np.log(logistic.cdf(1 - gamedata[-i][5][gamedata[-i][3]])) + blueupdatedwinprediction * np.log(blueupdatedwinprediction) + (1 - blueupdatedwinprediction) * np.log(blueupdatedwinprediciton) - blueupdatedwinprediction * np.log(logistic.cdf(gamedata[-i][6][gamedata[-i][4]])) - (1 - blueupdatedwinprediction ) * np.log(logistic.cdf((1 - gamedata[-i][6][gamedata[-i][4]]))))
-                network = np.array([network[0] - 3/frames * w0change, network[1] - 3/frames * w1change, network[2] - 3/frames * w2change])
-                bluenewsignal = np.dot(network[2], np.tanh(np.dot(network[1], np.tanh(gamedata[-i - 1][2])) + np.dot(network[0], blueinput)))
-                rednewsignal = np.dot(network[2], np.tanh(np.dot(network[1], np.tanh(gamedata[-i - 1][1])) + np.dot(network[0], blueinput)))
-                blueupdatedwinprediction = np.dot(logistic.cdf(bluenewsignal), softmax(bluenewsignal))
-                redupdatedwinprediction = np.dot(logistic.cdf(rednewsignal), softmax(rednewsignal))
-                i += 1
+            network = updateweights(redupdatedwinprediction, blueupdatedwinprediction, network, gamedata)
             frames = 0
             gamedata = []
+            noscore = True
             resetmap()
     redrawgamewindow()
 
