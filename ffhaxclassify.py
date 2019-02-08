@@ -1,6 +1,5 @@
 import pygame
 import pickle
-import boardanalysis
 
 # adds antialiasing to game, makes it look SmoothAndSilky(TM)
 from pygame import gfxdraw
@@ -10,7 +9,7 @@ import random
 from scipy.stats import logistic
 
 import tensorflow as tf
-mnist = tf.keras.datasets.mnist
+
 
 def probmove(arr):
     move = np.random.rand()
@@ -47,7 +46,7 @@ y_test = np.array([np.array(y4) for y4 in y_test])
 
 model = tf.keras.models.Sequential([
   tf.keras.layers.Flatten(),
-  tf.keras.layers.Dense(512, activation=tf.nn.relu),
+  tf.keras.layers.Dense(25, activation=tf.nn.relu),
   tf.keras.layers.Dropout(0.2),
   tf.keras.layers.Dense(18, activation=tf.nn.softmax)
 ])
@@ -89,6 +88,7 @@ network = [np.random.randn(100,7) / np.sqrt(6) ,
 np.random.randn(100,101) / np.sqrt(101),
 np.random.randn(18,101) / np.sqrt(101)]
 games = []
+points = 0
 
 networkloaded = False
 networkkept = False
@@ -572,11 +572,17 @@ kickedoff = True
 redlastgoal = False
 
 frames = 0
+redgamedata = []
+bluegamedata = []
+redmovedata = []
+bluemovedata = []
 gamedata = []
 redstate = []
 bluestate = []
-redchoice = [1]
-bluechoice = [1]
+redchoice = [17]
+bluechoice = [17]
+wingamedata = []
+winmovedata = []
 
 def policy(signal):
 
@@ -593,41 +599,11 @@ def forward(x):
     a2 = logistic.cdf(2*np.dot(network[2], np.append(a1, 1)))
     return[a0, a1, a2]
 
-def nnupdate(network):
-    for i in range(len(games)*50):
-        data.append([games[math.floor(i/50)][0][math.floor(randomvalues[i]*len(games[math.floor(i/50)][0]))], games[math.floor(i/50)][1]])
-    trainingdata = random.sample(data,len(data))
-    for i in range(len(games)*50):
-        frame = trainingdata[i][0]
-        redinput = np.array([(frame[2][0] - 15)*2 / (windowwidth - 30) - 1, (frame[2][1] - 15)*2 / (windowheight - 30) - 1, (frame[2][2] - frame[2][0]) / (windowwidth - 30), (frame[2][3] - frame[2][1]) / (windowheight - 30), (frame[2][4] - frame[2][0]) / (windowwidth - 25), (frame[2][5] - frame[2][1]) / (windowheight - 25)])
-        blueinput = np.array([(windowwidth - frame[2][2] - 15)*2 / (windowwidth - 30) - 1, (frame[2][3] - 15)*2 / (windowheight - 30) - 1, (frame[2][2] - frame[2][0]) / (windowwidth - 30), (frame[2][1] - frame[2][3]) / (windowheight - 30), (frame[2][2] - frame[2][4]) / (windowwidth - 25), (frame[2][5] - frame[2][3]) / (windowheight - 25)])
-        blueresult = trainingdata[i][1]
-        redresult = 1-blueresult
-        bluechoice = frame[0][-1]
-        redchoice = frame[1][-1]
-        blueoutput = forward(blueinput)
-        redoutput = forward(redinput)
-        blueguess = blueoutput[2][bluechoice]
-        redguess = redoutput[2][redchoice]
-        bluedelta2 = np.zeros(18)
-        reddelta2 = np.zeros(18)
-        bluedelta2[bluechoice] = 2*(blueguess-blueresult)*blueguess*(1-blueguess)*2
-        reddelta2[redchoice] = 2*(redguess-redresult)*redguess*(1-redguess)*2
-        w2change = np.outer(bluedelta2, np.append(frame[0][1], 1)) + np.outer(reddelta2, np.append(frame[1][1], 1))
-        bluedelta1 = np.multiply(np.dot(np.delete(np.transpose(network[2]),-1, 0), bluedelta2), 1-(frame[0][1])**2)
-        reddelta1 = np.multiply(np.dot(np.delete(np.transpose(network[2]),-1, 0), reddelta2), 1-(frame[1][1])**2)
-        w1change = np.outer(bluedelta1, np.append(frame[0][0], 1)) + np.outer(reddelta1, np.append(frame[1][0], 1))
-        bluedelta0 = np.multiply(np.dot(np.delete(np.transpose(network[1]),-1, 0), bluedelta1), 1-(frame[0][0])**2)
-        reddelta0 = np.multiply(np.dot(np.delete(np.transpose(network[1]),-1, 0), reddelta1), 1-(frame[1][0])**2)
-        w0change = np.outer(bluedelta0, np.append(blueinput, 1)) + np.outer(reddelta0, np.append(redinput, 1))
-        errors.append(blueresult*np.log(blueguess)+(1-blueresult)*np.log(1-blueguess) + redresult*np.log(redguess)+(1-redresult)*np.log(1-redguess))
-        network = [network[0] - learningrate*w0change, network[1] - learningrate*w1change, network[2] - learningrate*w2change]
-        networkkept = False
-        networkloaded = False
-
 run = True
+oldRedPredict = 0
+oldBluePredict = 0
 while run:
-    timeelapsed += clock.tick(1000)
+    timeelapsed += clock.tick(10000)
     frames += 1
 
     redinput = np.array([(reds[0].pos[0] - 15)*2 / (windowwidth - 30) - 1, (reds[0].pos[1] - 15)*2 / (windowheight - 30) - 1, (blues[0].pos[0] - reds[0].pos[0]) / (windowwidth - 30), (blues[0].pos[1] - reds[0].pos[1]) / (windowheight - 30), (b.pos[0] - reds[0].pos[0]) / (windowwidth - 25), (b.pos[1] - reds[0].pos[1]) / (windowheight - 25)])
@@ -675,10 +651,24 @@ while run:
         for item in sublist:
             blueinput.append(item)
 
+    redgamedata.append(redinput)
+    bluegamedata.append(blueinput)
+    redmovedata.append(redchoice[0])
+    bluemovedata.append(bluechoice[0])
+
     redinput = [redinput]
     blueinput = [blueinput]
-    redchoice[0] = probmove(model.predict(np.array(redinput))[0])
-    bluechoice[0] = probmove(model.predict(np.array(blueinput))[0])
+    if frames % 3 == 0:
+        redchoice[0] = probmove(model.predict(np.array(redinput))[0])
+        bluechoice[0] = probmove(model.predict(np.array(blueinput))[0])
+        oldRedPredict = redchoice[0]
+        oldBluePredict = bluechoice[0]
+    else:
+        redchoice[0] = oldRedPredict
+        bluechoice[0] = oldBluePredict
+
+
+
 
 
     # blocks the player that isn't kicking off from entering the circle/ other half
@@ -702,18 +692,6 @@ while run:
 
     # handles the key events
     keys = pygame.key.get_pressed()
-
-    if keys[pygame.K_k] and networkkept == False:
-        output = open('network.pkl', 'wb')
-        pickle.dump(network, output)
-        networkkept = True
-        print("network kept")
-
-    if keys[pygame.K_l] and networkloaded == False:
-        network = pickle.load(open('network.pkl', 'rb'))
-        networkloaded = True
-        print("network loaded")
-
 
     # red movement controls
     if keys[pygame.K_a] or 0 <= redchoice[0] <= 5:
@@ -835,11 +813,41 @@ while run:
     # updates score
     if b.pos[0] <= pitchcornerx:
         bluescore += 1
+        points += 1
         redlastgoal = False
+        wingamedata = wingamedata + bluegamedata[-60:]
+        winmovedata = winmovedata + bluemovedata[-60:]
+        redgamedata = []
+        bluegamedata = []
+        redmovedata = []
+        bluemovedata = []
+        frames = 0
+        if points > 2:
+            wingamedata = np.array([np.array(y1) for y1 in wingamedata])
+            winmovedata = np.array([np.array(y1) for y1 in winmovedata])
+            model.fit(wingamedata, winmovedata, epochs=1)
+            wingamedata = []
+            winmovedata = []
+            points = 0
         resetmap()
     elif b.pos[0] >= windowwidth - pitchcornerx:
         redscore += 1
+        points += 1
         redlastgoal = True
+        wingamedata = wingamedata + redgamedata[-60:]
+        winmovedata = winmovedata + redmovedata[-60:]
+        redgamedata = []
+        bluegamedata = []
+        redmovedata = []
+        bluemovedata = []
+        frames = 0
+        if points > 2:
+            wingamedata = np.array([np.array(y1) for y1 in wingamedata])
+            winmovedata = np.array([np.array(y1) for y1 in winmovedata])
+            model.fit(wingamedata, winmovedata, epochs=1)
+            wingamedata = []
+            winmovedata = []
+            points = 0
         resetmap()
     redrawgamewindow()
 
